@@ -177,6 +177,8 @@ class Trainer(object):
             self.model.train()
 
             for train_batch in self.train_generator:
+                print(train_batch.batch)
+                print(train_batch.lattice)
                 self.optimizer.zero_grad()
                 # preds = self.model(train_batch)
                 preds = self.model(train_batch.z, train_batch.disp, train_batch.edge_index, train_batch.batch)

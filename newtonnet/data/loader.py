@@ -64,35 +64,44 @@ class MolecularDataset(InMemoryDataset):
         data_list = []
         data_path = self.processed_paths[0]
         for raw_path in tqdm(self.raw_paths):
-            raw_data = np.load(raw_path)
-
-            z = torch.from_numpy(raw_data['Z']).int()
-            pos = torch.from_numpy(raw_data['R']).to(self.precision)
-            try:
-                energy = torch.from_numpy(raw_data['E']).to(self.precision)
-            except KeyError:
-                energy = None
-            try:
-                force = torch.from_numpy(raw_data['F']).to(self.precision)
-            except KeyError:
-                force = None
-
-            for i in range(pos.size(0)):
-                data = Data()
-                data.z = z.reshape(-1) if z.dim() < 2 else z[i].reshape(-1)
-                data.pos = pos[i].reshape(-1, 3)
-                if energy is not None:
-                    data.energy = energy[i].reshape(-1)
-                if force is not None:
-                    data.force = force[i].reshape(-1, 3)
-
-                if self.pre_filter is not None and not self.pre_filter(data):
-                    continue
-                if self.pre_transform is not None:
-                    data = self.pre_transform(data)
-                data_list.append(data)
+            if raw_path.endswith('.npz'):
+                data_list.extend(self.parse_npz(raw_path))
 
         self.save(data_list, data_path)
+
+    def parse_npz(self, raw_path: str) -> List[Data]:
+        data_list = []
+        raw_data = np.load(raw_path)
+
+        z = torch.from_numpy(raw_data['Z']).int()
+        pos = torch.from_numpy(raw_data['R']).to(self.precision)
+        lattice = torch.from_numpy(raw_data['L']).to(self.precision) if 'L' in raw_data else torch.eye(3, dtype=self.precision)
+        energy = torch.from_numpy(raw_data['E']).to(self.precision) if 'E' in raw_data else None
+        force = torch.from_numpy(raw_data['F']).to(self.precision) if 'F' in raw_data else None
+
+        for i in range(pos.size(0)):
+            data = Data()
+            data.z = z.reshape(-1) if z.dim() < 2 else z[i].reshape(-1)
+            data.pos = pos[i].reshape(-1, 3)
+            if lattice.dim() == 1:
+                data.lattice = lattice.reshape(1, 3, 3) if lattice.numel() == 9 else torch.eye(3, dtype=self.precision) * lattice
+            elif lattice.dim() == 2 and lattice.shape[0] == lattice.shape[1] == 3:
+                data.lattice = lattice
+            else:
+                data.lattice = lattice[i].reshape(3, 3) if lattice.numel() == 9 else torch.eye(3, dtype=self.precision) * lattice[i]
+            if energy is not None:
+                data.energy = energy[i].reshape(-1)
+            if force is not None:
+                data.force = force[i].reshape(-1, 3)
+
+            if self.pre_filter is not None and not self.pre_filter(data):
+                continue
+            if self.pre_transform is not None:
+                data = self.pre_transform(data)
+            data_list.append(data)
+
+        return data_list
+
 
 class MolecularStatistics(nn.Module):
     def __init__(self) -> None:
