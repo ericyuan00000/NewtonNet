@@ -66,7 +66,13 @@ class MolecularDataset(InMemoryDataset):
 
         z = torch.from_numpy(raw_data['Z']).int()
         pos = torch.from_numpy(raw_data['R']).to(self.precision)
-        lattice = torch.from_numpy(raw_data['L']).to(self.precision) if 'L' in raw_data else torch.eye(3, dtype=self.precision)
+        lattice = torch.from_numpy(raw_data['L']).to(self.precision) if 'L' in raw_data else torch.eye(3, dtype=self.precision) * torch.inf
+        if lattice.numel() == 3:
+            lattice = lattice.diag()
+        elif lattice.numel() == 9:
+            lattice = lattice.reshape(3, 3)
+        else:
+            raise ValueError('The lattice must be a single 3x3 matrix for each npz file.')
         energy = torch.from_numpy(raw_data['E']).to(self.precision) if 'E' in raw_data else None
         force = torch.from_numpy(raw_data['F']).to(self.precision) if 'F' in raw_data else None
 
@@ -74,14 +80,9 @@ class MolecularDataset(InMemoryDataset):
             data = Data()
             data.z = z.reshape(-1) if z.dim() < 2 else z[i].reshape(-1)
             data.pos = pos[i].reshape(-1, 3)
-            if lattice.dim() == 1:
-                data.lattice = lattice.reshape(1, 3, 3) if lattice.numel() == 9 else torch.eye(3, dtype=self.precision) * lattice
-            elif lattice.dim() == 2 and lattice.shape[0] == lattice.shape[1] == 3:
-                data.lattice = lattice
-            else:
-                data.lattice = lattice[i].reshape(3, 3) if lattice.numel() == 9 else torch.eye(3, dtype=self.precision) * lattice[i]
+            data.lattice = lattice.reshape(1, 3, 3)
             if energy is not None:
-                data.energy = energy[i].reshape(-1)
+                data.energy = energy[i].reshape(1)
             if force is not None:
                 data.force = force[i].reshape(-1, 3)
 

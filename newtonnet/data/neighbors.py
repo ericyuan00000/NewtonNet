@@ -39,24 +39,35 @@ class RadiusGraph(BaseTransform):
 
     def forward(self, data: Data) -> Data:
         assert data.pos is not None
+        assert data.lattice is not None
 
-        try:
-            shift = torch.zeros(1, 3, dtype=data.pos.dtype, device=data.pos.device)
-            for vector in data.lattice:
-                if not torch.any(vector > 0):
-                    continue
-                new_shift = torch.tensor([0., -1., 1.], dtype=data.pos.dtype, device=data.pos.device)[:, None] * vector[None, :]  # shape: (n_shift_new, 3)
-                shift = shift[None, :, :] + new_shift[:, None, :]  # shape: (n_shift_new, n_shift_old, 3)
-                shift = shift.reshape(-1, 3)  # shape: (n_shift, 3)
-            shifted_pos = data.pos[:, None, :] + shift[None, :, :]  # shape: (n_node, n_shift, 3)
-            shifted_pos = shifted_pos.reshape(-1, 2)  # shape: (n_node * n_shift, 3)
-            shifted_node_index = torch.arange(pos.shape[0])[:, None] * torch.ones(shift.shape[0])[None, :]
-            shifted_node_isoriginal = torch.zeros(new_shift.size(0), dtype=torch.bool).repeat(data.pos.size(0))
-            shifted_edge_index = radius_graph(shifted_pos, 3, max_num_neighbors=32)
-            shifted_edge_index = shifted_edge_index[:, shifted_node_isoriginal[shifted_edge_index[0]] | shifted_node_isoriginal[shifted_edge_index[1]]]
-            edge_index = shifted_node_index[shifted_edge_index]
-            disp = shifted_pos[shifted_edge_index[0]] - shifted_pos[shifted_edge_index[1]]
-        except AttributeError:
+        if data.lattice.max(dim=-1).isfinite().any():
+            shift = torch.tensor([[i, j, k] for i in [0, -1, 1] for j in [0, -1, 1] for k in [0, -1, 1]], dtype=data.pos.dtype, device=data.pos.device)
+            shift = shift @ data.lattice
+            shift = shift.nan_to_num()
+            shifted_pos = data.pos[:, None, :] + shift  # shape: (n_node, 27, 3)
+            shifted_pos = shifted_pos.reshape(-1, 2)  # shape: (n_node * 27, 3)
+            shifted_node_index = torch.arange(data.pos.shape[0], dtype=data.pos.dtype, device=data.pos.device)[:, None].repeat(1, 27)  # shape: (n_node, 27)
+            shifted_node_isoriginal = torch.zeros_like(shifted_node_index, dtype=torch.bool)  # shape: (n_node, 27)
+            shifted_node_isoriginal[:, 0] = True
+            shifted_batch = data.batch[:, None].repeat(1, 27)  # shape: (n_node, 27)
+            shifted_node_index = shifted_node_index.reshape(-1)  # shape: (n_node * 27)
+            shifted_node_isoriginal = shifted_node_isoriginal.reshape(-1)  # shape: (n_node * 27)
+            shifted_batch = shifted_batch.reshape(-1)  # shape: (n_node * 27)
+            shifted_edge_index = radius_graph(
+                shifted_pos,
+                self.r,
+                shifted_batch,
+                self.loop,
+                max_num_neighbors=self.max_num_neighbors,
+                flow=self.flow,
+                num_workers=self.num_workers,
+            )#.sort(dim=0)[0].unique(dim=1)
+            shifted_edge_isoriginal = shifted_node_isoriginal[shifted_edge_index[0]] | shifted_node_isoriginal[shifted_edge_index[1]]
+            shifted_edge_index = shifted_edge_index[:, shifted_edge_isoriginal]
+            data.edge_index = shifted_node_index[shifted_edge_index]
+            data.disp = shifted_pos[shifted_edge_index[0]] - shifted_pos[shifted_edge_index[1]]
+        else:
             data.edge_index = radius_graph(
                 data.pos,
                 self.r,
