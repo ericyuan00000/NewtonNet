@@ -47,7 +47,7 @@ class RadiusGraph(BaseTransform):
             shift = shift.nan_to_num()
             shifted_pos = data.pos[:, None, :] + shift  # shape: (n_node, 27, 3)
             shifted_pos = shifted_pos.reshape(-1, 3)  # shape: (n_node * 27, 3)
-            shifted_node_index = torch.arange(data.pos.shape[0], dtype=data.pos.dtype, device=data.pos.device)[:, None].repeat(1, 27)  # shape: (n_node, 27)
+            shifted_node_index = torch.arange(data.pos.shape[0], dtype=torch.long, device=data.pos.device)[:, None].repeat(1, 27)  # shape: (n_node, 27)
             shifted_node_index = shifted_node_index.reshape(-1)  # shape: (n_node * 27)
             shifted_node_isoriginal = torch.zeros(data.pos.shape[0], 27, dtype=torch.bool, device=data.pos.device)  # shape: (n_node, 27)
             shifted_node_isoriginal[:, 13] = True
