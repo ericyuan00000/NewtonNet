@@ -58,7 +58,7 @@ class MolecularDataset(InMemoryDataset):
         for raw_path in tqdm(self.raw_paths):
             if raw_path.endswith('.npz'):
                 data_list.extend(self.parse_npz(raw_path))
-            elif raw_path.endswith('.xyz'):
+            elif raw_path.endswith('.xyz') or raw_path.endswith('.extxyz'):
                 data_list.extend(self.parse_xyz(raw_path))
 
         self.save(data_list, data_path)
@@ -102,16 +102,21 @@ class MolecularDataset(InMemoryDataset):
         atoms_list = ase.io.read(raw_path, index=':')
 
         for atoms in atoms_list:
+            atoms.set_constraint()
             z = torch.from_numpy(atoms.get_atomic_numbers()).int()
             pos = torch.from_numpy(atoms.get_positions()).to(self.precision)
             lattice = torch.from_numpy(atoms.get_cell().array).to(self.precision)
             lattice[lattice.norm(dim=-1) < 1e-3] = torch.inf
-            lattice[atoms.get_pbc()] = torch.inf
+            lattice[~atoms.get_pbc()] = torch.inf
+            energy = torch.tensor(atoms.get_potential_energy(), dtype=self.precision)
+            forces = torch.from_numpy(atoms.get_forces()).to(self.precision)
 
             data = Data()
             data.z = z.reshape(-1)
             data.pos = pos.reshape(-1, 3)
             data.lattice = lattice.reshape(1, 3, 3)
+            data.energy = energy.reshape(1)
+            data.force = forces.reshape(-1, 3)
         return data_list
 
 
