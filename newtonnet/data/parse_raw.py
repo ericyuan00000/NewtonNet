@@ -77,28 +77,37 @@ def parse_train_test(
     print(f'batch size (train, val, test): {train_batch_size}, {val_batch_size}, {test_batch_size}')
 
     # extract data stats
-    stats = {}
+    stats_raw = []
     stats_calc = MolecularStatistics()
     for train_batch in tqdm(train_gen):
-        for key, value in stats_calc(train_batch).items():
-            if key not in stats:
-                stats[key] = []
-            stats[key].append(value)
-    for key, value in stats.items():
-        print(key, value)
-        if key == 'z':
-            stats[key] = torch.cat(value, dim=0).unique()
-        elif isinstance(value[0], torch.Tensor):
-            stats[key] = torch.nanmean(torch.stack(value), dim=0)
-        else:
-            stats[key] = np.mean(value)
+        stats_raw.append(stats_calc(train_batch))
+    stats = process_stats(stats_raw)
     print('stats:')
     print_stats(stats)
 
     return train_gen, val_gen, test_gen, stats
 
-def process_stats(stats):
-    stats = {key: np.mean([item[key] for item in stats]) for key in stats[0]}
+def process_stats(stats_raw):
+    stats = {'z': [], 'average_neighbor_count': [], 'properties': {}}
+    for stat in stats_raw:
+        stats['z'].append(stat['z'])
+        stats['average_neighbor_count'].append(stat['average_neighbor_count'])
+        for prop, prop_dict in stat['properties'].items():  # prop: 'energy', 'force', etc
+            if prop not in stats['properties']:
+                stats['properties'][prop] = {}
+            for key, value in prop_dict.items():  # key: 'scale', 'shift'
+                if key not in stats['properties'][prop]:
+                    stats['properties'][prop][key] = []
+                if value.ndim > 0:
+                    value_dense = torch.full((32, ), torch.nan, dtype=value.dtype, device=value.device)
+                    value_dense[stat['z']] = value
+                    value = value_dense
+                stats['properties'][prop][key].append(value)
+    stats['z'] = torch.cat(stats['z']).unique()
+    stats['average_neighbor_count'] = torch.tensor(stats['average_neighbor_count']).mean()
+    for prop, prop_dict in stats['properties'].items():
+        for key, value in prop_dict.items():
+            stats['properties'][prop][key] = torch.stack(value).nanmean(dim=0).nan_to_num()
     return stats
 
 def print_stats(stats, level=1):
@@ -107,5 +116,5 @@ def print_stats(stats, level=1):
             print('  ' * level + f'{key}:')
             print_stats(value, level + 1)
         else:
-            print('  ' * level + f'{key}: {value}')
+            print('  ' * level + f'{key}: {value[value != 0]}')
     return stats
