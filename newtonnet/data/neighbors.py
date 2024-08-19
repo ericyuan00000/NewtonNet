@@ -42,14 +42,14 @@ class RadiusGraph(BaseTransform):
         assert data.lattice is not None
 
         if data.lattice.max(dim=-1).values.isfinite().any():
-            shift = torch.tensor([[i, j, k] for i in [0, -1, 1] for j in [0, -1, 1] for k in [0, -1, 1]], dtype=data.pos.dtype, device=data.pos.device)
+            shift = torch.tensor([[i, j, k] for i in [-1, 0, 1] for j in [-1, 0, 1] for k in [-1, 0, 1]], dtype=data.pos.dtype, device=data.pos.device)
             shift = shift @ data.lattice
             shift = shift.nan_to_num()
             shifted_pos = data.pos[:, None, :] + shift  # shape: (n_node, 27, 3)
             shifted_pos = shifted_pos.reshape(-1, 2)  # shape: (n_node * 27, 3)
             shifted_node_index = torch.arange(data.pos.shape[0], dtype=data.pos.dtype, device=data.pos.device)[:, None].repeat(1, 27)  # shape: (n_node, 27)
             shifted_node_isoriginal = torch.zeros_like(shifted_node_index, dtype=torch.bool)  # shape: (n_node, 27)
-            shifted_node_isoriginal[:, 0] = True
+            shifted_node_isoriginal[:, 13] = True
             shifted_batch = data.batch[:, None].repeat(1, 27)  # shape: (n_node, 27)
             shifted_node_index = shifted_node_index.reshape(-1)  # shape: (n_node * 27)
             shifted_node_isoriginal = shifted_node_isoriginal.reshape(-1)  # shape: (n_node * 27)
