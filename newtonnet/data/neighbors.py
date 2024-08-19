@@ -46,14 +46,17 @@ class RadiusGraph(BaseTransform):
             shift = shift @ data.lattice
             shift = shift.nan_to_num()
             shifted_pos = data.pos[:, None, :] + shift  # shape: (n_node, 27, 3)
-            shifted_pos = shifted_pos.reshape(-1, 2)  # shape: (n_node * 27, 3)
+            shifted_pos = shifted_pos.reshape(-1, 3)  # shape: (n_node * 27, 3)
             shifted_node_index = torch.arange(data.pos.shape[0], dtype=data.pos.dtype, device=data.pos.device)[:, None].repeat(1, 27)  # shape: (n_node, 27)
-            shifted_node_isoriginal = torch.zeros_like(shifted_node_index, dtype=torch.bool)  # shape: (n_node, 27)
-            shifted_node_isoriginal[:, 13] = True
-            shifted_batch = data.batch[:, None].repeat(1, 27)  # shape: (n_node, 27)
             shifted_node_index = shifted_node_index.reshape(-1)  # shape: (n_node * 27)
+            shifted_node_isoriginal = torch.zeros(data.pos.shape[0], 27, dtype=torch.bool, device=data.pos.device)  # shape: (n_node, 27)
+            shifted_node_isoriginal[:, 13] = True
             shifted_node_isoriginal = shifted_node_isoriginal.reshape(-1)  # shape: (n_node * 27)
-            shifted_batch = shifted_batch.reshape(-1)  # shape: (n_node * 27)
+            if data.batch is not None:
+                shifted_batch = data.batch[:, None].repeat(1, 27)  # shape: (n_node, 27)
+                shifted_batch = shifted_batch.reshape(-1)  # shape: (n_node * 27)
+            else:
+                shifted_batch = None
             shifted_edge_index = radius_graph(
                 shifted_pos,
                 self.r,
@@ -63,7 +66,7 @@ class RadiusGraph(BaseTransform):
                 flow=self.flow,
                 num_workers=self.num_workers,
             )#.sort(dim=0)[0].unique(dim=1)
-            shifted_edge_isoriginal = shifted_node_isoriginal[shifted_edge_index[0]] | shifted_node_isoriginal[shifted_edge_index[1]]
+            shifted_edge_isoriginal = shifted_node_isoriginal[shifted_edge_index[0]]
             shifted_edge_index = shifted_edge_index[:, shifted_edge_isoriginal]
             data.edge_index = shifted_node_index[shifted_edge_index]
             data.disp = shifted_pos[shifted_edge_index[0]] - shifted_pos[shifted_edge_index[1]]
