@@ -99,7 +99,7 @@ def process_stats(stats_raw):
                 if key not in stats['properties'][prop]:
                     stats['properties'][prop][key] = []
                 if value.ndim > 0:
-                    value_dense = torch.full((129, ), torch.nan, dtype=value.dtype, device=value.device)
+                    value_dense = torch.full((129, ), torch.nan, dtype=value.dtype)
                     value_dense[stat['z']] = value
                     value = value_dense
                 stats['properties'][prop][key].append(value)
