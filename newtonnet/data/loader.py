@@ -45,7 +45,7 @@ class MolecularDataset(InMemoryDataset):
 
     @property
     def raw_file_names(self) -> Union[str, List[str]]:
-        names = [name for name in os.listdir(self.raw_dir) if name.endswith('.npz')]
+        names = [name for name in os.listdir(self.raw_dir) if name.endswith(('.npz', '.xyz', '.extxyz'))]
         return names
 
     @property
@@ -117,6 +117,13 @@ class MolecularDataset(InMemoryDataset):
             data.lattice = lattice.reshape(1, 3, 3)
             data.energy = energy.reshape(1)
             data.force = forces.reshape(-1, 3)
+
+            if self.pre_filter is not None and not self.pre_filter(data):
+                continue
+            if self.pre_transform is not None:
+                data = self.pre_transform(data)
+            data_list.append(data)
+
         return data_list
 
 
