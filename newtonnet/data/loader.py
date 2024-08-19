@@ -2,8 +2,9 @@ import os
 import os.path as osp
 from tqdm import tqdm
 from typing import Callable, List, Optional, Union
-
 import numpy as np
+import ase, ase.io
+
 import torch
 import torch.nn as nn
 from torch_geometric.data import InMemoryDataset, Data
@@ -57,6 +58,8 @@ class MolecularDataset(InMemoryDataset):
         for raw_path in tqdm(self.raw_paths):
             if raw_path.endswith('.npz'):
                 data_list.extend(self.parse_npz(raw_path))
+            elif raw_path.endswith('.xyz'):
+                data_list.extend(self.parse_xyz(raw_path))
 
         self.save(data_list, data_path)
 
@@ -92,6 +95,23 @@ class MolecularDataset(InMemoryDataset):
                 data = self.pre_transform(data)
             data_list.append(data)
 
+        return data_list
+    
+    def parse_xyz(self, raw_path: str) -> List[Data]:
+        data_list = []
+        atoms_list = ase.io.read(raw_path, index=':')
+
+        for atoms in atoms_list:
+            z = torch.from_numpy(atoms.get_atomic_numbers()).int()
+            pos = torch.from_numpy(atoms.get_positions()).to(self.precision)
+            lattice = torch.from_numpy(atoms.get_cell().array).to(self.precision)
+            lattice[lattice.norm(dim=-1) < 1e-3] = torch.inf
+            lattice[atoms.get_pbc()] = torch.inf
+
+            data = Data()
+            data.z = z.reshape(-1)
+            data.pos = pos.reshape(-1, 3)
+            data.lattice = lattice.reshape(1, 3, 3)
         return data_list
 
 
