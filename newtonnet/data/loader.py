@@ -123,7 +123,6 @@ class MolecularStatistics(nn.Module):
         stats = {}
 
         z = data.z.long().cpu()
-        z_max = z.max().item()
         stats['z'] = z.unique()
 
         edge_index = data.edge_index.cpu()
@@ -137,18 +136,20 @@ class MolecularStatistics(nn.Module):
         try:
             energy = data.energy.cpu()
             formula = scatter(nn.functional.one_hot(z), batch, dim=0).to(energy.dtype)
-            energy_shifts = torch.linalg.lstsq(formula, energy, driver='gelsd').solution
-            energy_shifts[energy_shifts.abs() < 1e-3] = 0
-            energy_scale = ((energy - torch.matmul(formula, energy_shifts)).square().sum() / (formula).sum()).sqrt()
+            solution = torch.linalg.lstsq(formula, energy, driver='gelsd').solution
+            energy_shifts = torch.zeros(119, dtype=energy.dtype, device=energy.device)
+            energy_shifts[:solution.size(0)] = solution
+            energy_shifts[energy_shifts.abs() < 1e-3] = torch.nan
+            energy_scale = ((energy - torch.matmul(formula, solution.nan_to_num())).square().sum() / (formula).sum()).sqrt()
             stats['properties']['energy'] = {'shift': energy_shifts, 'scale': energy_scale}
         except AttributeError:
             pass
         try:
             force = data.force.norm(dim=-1).cpu()
-            force_scale = scatter(force, z, reduce='mean')
-            force_scale[force_scale.abs() < 1e-3] = 0
+            force_scale = scatter(force, z, reduce='mean', dim_size=119)
+            force_scale[force_scale.abs() < 1e-3] = torch.nan
             stats['properties']['force'] = {'scale': force_scale}
         except AttributeError:
             pass
-
+        
         return stats

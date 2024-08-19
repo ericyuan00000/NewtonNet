@@ -1,5 +1,6 @@
 import os.path as osp
 import json
+from tqdm import tqdm
 
 import numpy as np
 import torch
@@ -76,15 +77,29 @@ def parse_train_test(
     print(f'batch size (train, val, test): {train_batch_size}, {val_batch_size}, {test_batch_size}')
 
     # extract data stats
+    stats = {}
     stats_calc = MolecularStatistics()
-    for train_batch in train_gen:
-        stats = stats_calc(train_batch)
-        break
-    # stats['cutoff'] = train_data.dataset.cutoff
+    for train_batch in tqdm(train_gen):
+        for key, value in stats_calc(train_batch).items():
+            if key not in stats:
+                stats[key] = []
+            stats[key].append(value)
+    for key, value in stats.items():
+        print(key, value)
+        if key == 'z':
+            stats[key] = torch.cat(value, dim=0).unique()
+        elif isinstance(value[0], torch.Tensor):
+            stats[key] = torch.nanmean(torch.stack(value), dim=0)
+        else:
+            stats[key] = np.mean(value)
     print('stats:')
     print_stats(stats)
 
     return train_gen, val_gen, test_gen, stats
+
+def process_stats(stats):
+    stats = {key: np.mean([item[key] for item in stats]) for key in stats[0]}
+    return stats
 
 def print_stats(stats, level=1):
     for key, value in stats.items():
