@@ -7,11 +7,11 @@ import ase, ase.io
 
 import torch
 import torch.nn as nn
-from torch_geometric.data import InMemoryDataset, Data
+from torch_geometric.data import Dataset, Data
 from torch_geometric.utils import scatter
 
 
-class MolecularDataset(InMemoryDataset):
+class MolecularDataset(Dataset):
     '''
     This class is a dataset for molecular data.
     
@@ -46,20 +46,32 @@ class MolecularDataset(InMemoryDataset):
         names = [name for name in os.listdir(self.raw_dir) if name.endswith(('.npz', '.xyz', '.extxyz'))]
         return names
 
-    @property
-    def processed_file_names(self) -> List[str]:
-        return ['data.pt']
+    # @property
+    # def processed_file_names(self) -> List[str]:
+    #     return ['data.pt']
 
     def process(self) -> None:
-        data_list = []
-        data_path = self.processed_paths[0]
+        # data_list = []
+        # data_path = self.processed_paths[0]
+        idx = 0
         for raw_path in tqdm(self.raw_paths):
             if raw_path.endswith('.npz'):
-                data_list.extend(self.parse_npz(raw_path))
+                # data_list.extend(self.parse_npz(raw_path))
+                data_list = self.parse_npz(raw_path)
             elif raw_path.endswith('.xyz') or raw_path.endswith('.extxyz'):
-                data_list.extend(self.parse_xyz(raw_path))
+                # data_list.extend(self.parse_xyz(raw_path))
+                data_list = self.parse_xyz(raw_path)
+            
+            for data in data_list:
+                torch.save(data, osp.join(self.processed_dir, f'data_{idx}.pt'))
+                idx += 1
+        # self.save(data_list, data_path)
 
-        self.save(data_list, data_path)
+    def len(self) -> int:
+        return len(self.processed_file_names)
+    
+    def get(self, idx: int) -> Data:
+        return torch.load(osp.join(self.processed_dir, f'data_{idx}.pt'))
 
     def parse_npz(self, raw_path: str) -> List[Data]:
         data_list = []
