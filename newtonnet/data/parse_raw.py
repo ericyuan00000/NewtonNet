@@ -1,3 +1,5 @@
+from tqdm import tqdm
+
 from torch.utils.data import random_split
 from torch_geometric.loader import DataLoader
 
@@ -69,15 +71,36 @@ def parse_train_test(
     print(f'batch size (train, val, test): {train_batch_size}, {val_batch_size}, {test_batch_size}')
 
     # extract data stats
+    stats_raw = []
     stats_calc = MolecularStatistics()
-    for train_batch in train_gen:
-        stats = stats_calc(train_batch)
-        break
-    # stats['cutoff'] = train_data.dataset.cutoff
+    for train_batch in tqdm(train_gen):
+        stats_raw.append(stats_calc(train_batch))
+    stats = process_stats(stats_raw)
     print('stats:')
     print_stats(stats)
 
     return train_gen, val_gen, test_gen, stats
+
+def process_stats(stats_raw):
+    stats = {'z': [], 'properties': {}}
+    for stat in stats_raw:
+        stats['z'].append(stat['z'])
+        for prop, prop_dict in stat['properties'].items():  # prop: 'energy', 'force', etc
+            if prop not in stats['properties']:
+                stats['properties'][prop] = {}
+            for key, value in prop_dict.items():  # key: 'scale', 'shift'
+                if key not in stats['properties'][prop]:
+                    stats['properties'][prop][key] = []
+                if value.ndim > 0:
+                    value_dense = torch.full((129, ), torch.nan, dtype=value.dtype)
+                    value_dense[stat['z']] = value
+                    value = value_dense
+                stats['properties'][prop][key].append(value)
+    stats['z'] = torch.cat(stats['z']).unique()
+    for prop, prop_dict in stats['properties'].items():
+        for key, value in prop_dict.items():
+            stats['properties'][prop][key] = torch.stack(value).nanmean(dim=0).nan_to_num()
+    return stats
 
 def print_stats(stats, level=1):
     for key, value in stats.items():
@@ -85,5 +108,5 @@ def print_stats(stats, level=1):
             print('  ' * level + f'{key}:')
             print_stats(value, level + 1)
         else:
-            print('  ' * level + f'{key}: {value}')
+            print('  ' * level + f'{key}: {value[value != 0]}')
     return stats
