@@ -34,10 +34,6 @@ precision = args.precision
 precision = get_precison_by_string(precision)
 
 # data
-parse_train_test(
-    precision=precision,
-    train_root=root,
-    force_reload=True,
-    )
+MolecularDataset(root=root, precision=precision, force_reload=True)
 
 print('done!')
