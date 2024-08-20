@@ -31,7 +31,7 @@ class MolecularDataset(Dataset):
         self.precision = precision
         super().__init__(**kwargs)
 
-        self.load(self.processed_paths[0])
+        # self.load(self.processed_paths[0])
 
     @property
     def raw_dir(self) -> str:
@@ -47,8 +47,8 @@ class MolecularDataset(Dataset):
         return names
 
     # @property
-    # def processed_file_names(self) -> List[str]:
-    #     return ['data.pt']
+    def processed_file_names(self) -> List[str]:
+        return [name for name in os.listdir(self.processed_dir) if name.startswith('data_') and name.endswith('.pt')]
 
     def process(self) -> None:
         # data_list = []
@@ -68,7 +68,7 @@ class MolecularDataset(Dataset):
         # self.save(data_list, data_path)
 
     def len(self) -> int:
-        return len(self.processed_file_names)
+        return len(self.processed_file_names())
     
     def get(self, idx: int) -> Data:
         return torch.load(osp.join(self.processed_dir, f'data_{idx}.pt'))
