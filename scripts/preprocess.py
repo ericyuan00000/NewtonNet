@@ -37,7 +37,7 @@ precision = get_precison_by_string(precision)
 parse_train_test(
     precision=precision,
     train_root=root,
-    force_reload=False,
+    force_reload=True,
     )
 
 print('done!')
