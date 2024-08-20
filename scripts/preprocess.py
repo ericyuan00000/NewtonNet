@@ -2,8 +2,7 @@
 
 import argparse
 
-from newtonnet.data import RadiusGraph
-from newtonnet.data import parse_train_test
+from newtonnet.data import MolecularDataset
 from newtonnet.layers.precision import get_precison_by_string
 # torch.autograd.set_detect_anomaly(True)
 
