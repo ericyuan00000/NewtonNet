@@ -88,10 +88,9 @@ def parse_train_test(
     return train_gen, val_gen, test_gen, stats
 
 def process_stats(stats_raw):
-    stats = {'z': [], 'average_neighbor_count': [], 'properties': {}}
+    stats = {'z': [], 'properties': {}}
     for stat in stats_raw:
         stats['z'].append(stat['z'])
-        stats['average_neighbor_count'].append(stat['average_neighbor_count'])
         for prop, prop_dict in stat['properties'].items():  # prop: 'energy', 'force', etc
             if prop not in stats['properties']:
                 stats['properties'][prop] = {}
@@ -104,7 +103,6 @@ def process_stats(stats_raw):
                     value = value_dense
                 stats['properties'][prop][key].append(value)
     stats['z'] = torch.cat(stats['z']).unique()
-    stats['average_neighbor_count'] = torch.tensor(stats['average_neighbor_count']).mean()
     for prop, prop_dict in stats['properties'].items():
         for key, value in prop_dict.items():
             stats['properties'][prop][key] = torch.stack(value).nanmean(dim=0).nan_to_num()
