@@ -1,10 +1,8 @@
 #! /usr/bin/env python
 
-import os
 import argparse
-import yaml
 
-import torch
+from newtonnet.data import RadiusGraph
 from newtonnet.data import parse_train_test
 from newtonnet.layers.precision import get_precison_by_string
 # torch.autograd.set_detect_anomaly(True)
@@ -14,27 +12,32 @@ parser = argparse.ArgumentParser(
     description='This is a pacakge to train NewtonNet on a given data.',
     )
 parser.add_argument(
-    '-c',
-    '--config',
+    '-r',
+    '--root',
     type=str,
-    help='The path to the Yaml configuration file.',
+    help='The path to the raw data root directory.',
     )
+parser.add_argument(
+    '-p',
+    '--precision',
+    type=str,
+    help='The precision of the model. Default: single.',
+    default='single',
+)
 
 # define arguments
 args = parser.parse_args()
-config = args.config
-
-# locate files
-settings_path = os.path.abspath(config)
-settings = yaml.safe_load(open(settings_path, 'r'))
+root = args.root
+precision = args.precision
 
 # device
-precision = get_precison_by_string(settings['general']['precision'])
+precision = get_precison_by_string(precision)
 
 # data
-torch.manual_seed(settings['general']['seed'])
-settings['data'].pop('cutoff')
-train_gen, val_gen, test_gen, stats = parse_train_test(
+parse_train_test(
     precision=precision,
-    **settings['data'],
+    train_root=root,
+    force_reload=False,
     )
+
+print('done!')

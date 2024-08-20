@@ -138,12 +138,7 @@ class MolecularStatistics(nn.Module):
         z_unique = z.unique()
         stats['z'] = z_unique
 
-        edge_index = data.edge_index.cpu()
         batch = data.batch.cpu()
-        node_count = z.size(0)
-        edge_count = edge_index.size(1)
-        neighbor_count = edge_count / node_count
-        stats['average_neighbor_count'] = neighbor_count
 
         stats['properties'] = {}
         try:
