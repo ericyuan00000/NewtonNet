@@ -96,7 +96,10 @@ else:
 main_loss, eval_loss = get_loss_by_string(settings['training'].pop('loss', None))
 
 # optimizer
-trainable_params = filter(lambda p: p.requires_grad, model.parameters())
+if settings['training'].pop('train_output_only', False):
+    trainable_params = filter(lambda p: p.requires_grad, model.output_layers.parameters())
+else:
+    trainable_params = filter(lambda p: p.requires_grad, model.parameters())
 optimizer, optimizer_kwargs = settings['training'].pop('optimizer', {'adam': {}}).popitem()
 optimizer = get_optimizer_by_string(optimizer, trainable_params, **optimizer_kwargs)
 lr_scheduler = settings['training'].pop('lr_scheduler', None).items()
