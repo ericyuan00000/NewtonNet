@@ -48,6 +48,8 @@ class MolecularDataset(Dataset):
 
     # @property
     def processed_file_names(self) -> List[str]:
+        if not osp.exists(self.processed_dir):
+            return []
         return [name for name in os.listdir(self.processed_dir) if name.startswith('data_') and name.endswith('.pt')]
 
     def process(self) -> None:
