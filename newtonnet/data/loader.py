@@ -124,7 +124,7 @@ def parse_npz(raw_path: str, pre_transform: Callable, pre_filter: Callable, prec
 
     z = torch.from_numpy(raw_data['Z']).int()
     pos = torch.from_numpy(raw_data['R']).to(precision)
-    lattice = torch.from_numpy(raw_data['L']).to(precision) if 'L' in raw_data else torch.eye(3, dtype=precision) * torch.inf
+    lattice = torch.from_numpy(raw_data['L']).to(precision) if 'L' in raw_data else torch.ones(3, dtype=precision) * torch.inf
     if lattice.numel() == 3:
         lattice = lattice.diag()
     elif lattice.numel() == 9:

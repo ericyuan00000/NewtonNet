@@ -1,6 +1,6 @@
+import torch
 from torch_geometric.data import Data
 from torch_geometric.transforms import BaseTransform
-
 from torch_geometric.nn import radius_graph
 
 class RadiusGraph(BaseTransform):
