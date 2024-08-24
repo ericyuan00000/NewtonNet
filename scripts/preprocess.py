@@ -24,18 +24,23 @@ parser.add_argument(
     help='The precision of the model. Default: single.',
     default='single',
 )
+parser.add_argument(
+    '--in-memory',
+    action=argparse.BooleanOptionalAction,
+    help='Whether to load the data in memory. Default: True.',
+    default=True,
+)
 
 # define arguments
 args = parser.parse_args()
 root = args.root
 precision = args.precision
-
-# device
-precision = get_precison_by_string(precision)
+in_memory = args.in_memory
 
 # data
 parse_train_test(
-    precision=precision,
+    in_memory=in_memory,
+    precision=get_precison_by_string(precision),
     train_root=root,
     force_reload=False,
     )
