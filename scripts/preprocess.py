@@ -2,7 +2,7 @@
 
 import argparse
 
-from newtonnet.data import MolecularDataset
+from newtonnet.data import MolecularDataset, MolecularInMemoryDataset
 from newtonnet.layers.precision import get_precison_by_string
 # torch.autograd.set_detect_anomaly(True)
 
@@ -23,16 +23,23 @@ parser.add_argument(
     help='The precision of the model. Default: single.',
     default='single',
 )
+parser.add_argument(
+    '--in-memory',
+    action=argparse.BooleanOptionalAction,
+    help='Whether to load the data in memory. Default: True.',
+    default=True,
+)
 
 # define arguments
 args = parser.parse_args()
 root = args.root
 precision = args.precision
-
-# device
-precision = get_precison_by_string(precision)
+in_memory = args.in_memory
 
 # data
-MolecularDataset(root=root, precision=precision, force_reload=True)
+if in_memory:
+    data = MolecularInMemoryDataset(root=root, precision=precision, force_reload=True)
+else:
+    data = MolecularDataset(root=root, precision=precision, force_reload=True)
 
 print('done!')
