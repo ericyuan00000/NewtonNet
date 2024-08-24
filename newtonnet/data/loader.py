@@ -54,9 +54,9 @@ class MolecularDataset(Dataset):
         idx = 0
         for raw_path in tqdm(self.raw_paths):
             if raw_path.endswith('.npz'):
-                data_list = parse_npz(raw_path)
+                data_list = parse_npz(raw_path, self.pre_transform, self.pre_filter, self.precision)
             elif raw_path.endswith('.xyz') or raw_path.endswith('.extxyz'):
-                data_list = parse_xyz(raw_path)
+                data_list = parse_xyz(raw_path, self.pre_transform, self.pre_filter, self.precision)
             
             for data in data_list:
                 torch.save(data, osp.join(self.processed_dir, f'data_{idx}.pt'))
@@ -112,9 +112,9 @@ class MolecularInMemoryDataset(InMemoryDataset):
         data_path = self.processed_paths[0]
         for raw_path in tqdm(self.raw_paths):
             if raw_path.endswith('.npz'):
-                data_list.extend(parse_npz(raw_path))
+                data_list.extend(parse_npz(raw_path, self.pre_transform, self.pre_filter, self.precision))
             elif raw_path.endswith('.xyz') or raw_path.endswith('.extxyz'):
-                data_list.extend(parse_xyz(raw_path))
+                data_list.extend(parse_xyz(raw_path, self.pre_transform, self.pre_filter, self.precision))
             
         self.save(data_list, data_path)
 
