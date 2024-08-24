@@ -4,10 +4,11 @@ import torch
 from torch.utils.data import random_split
 from torch_geometric.loader import DataLoader
 
-from newtonnet.data import MolecularDataset, MolecularStatistics
+from newtonnet.data import MolecularStatistics
 
 
 def parse_train_test(
+        in_memory: bool = True,
         train_root: str = None,
         val_root: str = None,
         test_root: str = None,
@@ -23,6 +24,7 @@ def parse_train_test(
     Parse the training, validation, and test data.
 
     Args:
+        in_memory (bool): Whether to load the data in memory. Default: True.
         train_path (str): The path to the training data.
         val_path (str): The path to the validation data. If None, split from the unused training data. Default: None.
         test_path (str): The path to the test data. If None, split from the unused validation data. Default: None.
@@ -39,6 +41,11 @@ def parse_train_test(
         val_gen (torch.utils.data.DataLoader): The validation data loader.
         test_gen (torch.utils.data.DataLoader): The test data loader.
     '''
+    # define dataset type
+    if in_memory:
+        from newtonnet.data import MolecularInMemoryDataset as MolecularDataset
+    else:
+        from newtonnet.data import MolecularDataset
 
     # load data
     print('Data:')
