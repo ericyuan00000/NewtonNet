@@ -33,7 +33,7 @@ parser.add_argument(
 # define arguments
 args = parser.parse_args()
 root = args.root
-precision = args.precision
+precision = get_precison_by_string(args.precision)
 in_memory = args.in_memory
 
 # data
