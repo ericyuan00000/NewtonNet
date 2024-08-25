@@ -3,16 +3,16 @@ from torch import nn
 from torch.autograd import grad
 from torch_geometric.utils import scatter
 
-from newtonnet.layers.scalers import NullScaleShift
+from newtonnet.layers.scalers import ScaleShift
 
 
-def get_output_by_string(key, n_features, activation, scalers):
+def get_output_by_string(key, n_features, activation):
     if key == 'energy':
-        output_layer = EnergyOutput(n_features, activation, scalers['energy'])
+        output_layer = EnergyOutput(n_features, activation)
     elif key == 'gradient_force':
         output_layer = GradientForceOutput()
     elif key == 'direct_force':
-        output_layer = DirectForceOutput(n_features, activation, scalers['force'])
+        output_layer = DirectForceOutput(n_features, activation)
     # elif key == 'hessian':
     #     output_layer = SecondDerivativeProperty(
     #         dependent_property='forces',
@@ -56,7 +56,7 @@ class EnergyOutput(DirectProperty):
         activation (nn.Module): Activation function.
         scaler (nn.Module): The normalizer for the atomic properties.
     '''
-    def __init__(self, n_features, activation, scaler):
+    def __init__(self, n_features, activation):
         super(EnergyOutput, self).__init__()
         self.layers = nn.Sequential(
             nn.Linear(n_features, n_features),
@@ -65,7 +65,7 @@ class EnergyOutput(DirectProperty):
             activation,
             nn.Linear(n_features, 1),
             )
-        self.scaler = scaler
+        self.scaler = ScaleShift(scale=True, shift=True)
 
     def forward(self, outputs):
         energy = self.layers(outputs.atom_node)
@@ -80,7 +80,7 @@ class GradientForceOutput(FirstDerivativeProperty):
     '''
     def __init__(self):
         super(GradientForceOutput, self).__init__()
-        self.scaler = NullScaleShift()
+        self.scaler = ScaleShift(scale=False, shift=False)
 
     def forward(self, outputs):
         force = -grad(
@@ -98,7 +98,7 @@ class DirectForceOutput(DirectProperty):
     '''
     Direct force prediction
     '''
-    def __init__(self, n_features, activation, scaler):
+    def __init__(self, n_features, activation):
         super(DirectForceOutput, self).__init__()
         self.layers = nn.Sequential(
             nn.Linear(n_features, n_features),
@@ -107,7 +107,7 @@ class DirectForceOutput(DirectProperty):
             activation,
             nn.Linear(n_features, n_features),
             )
-        self.scaler = scaler
+        self.scaler = ScaleShift(scale=True, shift=False)
 
     def forward(self, outputs):
         coeff = self.layers(outputs.atom_node)  # n_nodes, n_features

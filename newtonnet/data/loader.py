@@ -139,34 +139,34 @@ class MolecularDataset(Dataset):
         return data_list
 
 
-class MolecularStatistics(nn.Module):
-    def __init__(self) -> None:
-        super().__init__()
+# class MolecularStatistics(nn.Module):
+#     def __init__(self) -> None:
+#         super().__init__()
 
-    def forward(self, data):
-        stats = {}
+#     def forward(self, data):
+#         stats = {}
 
-        z = data.z.long().cpu()
-        z_unique = z.unique()
-        stats['z'] = z_unique
+#         z = data.z.long().cpu()
+#         z_unique = z.unique()
+#         stats['z'] = z_unique
 
-        batch = data.batch.cpu()
+#         batch = data.batch.cpu()
 
-        stats['properties'] = {}
-        try:
-            energy = data.energy.cpu()
-            formula = scatter(nn.functional.one_hot(z), batch, dim=0).to(energy.dtype)
-            solution = torch.linalg.lstsq(formula, energy, driver='gelsd').solution
-            energy_shifts = solution[z_unique]
-            energy_scale = ((energy - torch.matmul(formula, solution)).square().sum() / (formula).sum()).sqrt()
-            stats['properties']['energy'] = {'shift': energy_shifts, 'scale': energy_scale}
-        except AttributeError:
-            pass
-        try:
-            force = data.force.norm(dim=-1).cpu()
-            force_scale = scatter(force, z, reduce='mean')
-            force_scale = force_scale[z_unique]
-            stats['properties']['force'] = {'scale': force_scale}
-        except AttributeError:
-            pass
-        return stats
+#         stats['properties'] = {}
+#         try:
+#             energy = data.energy.cpu()
+#             formula = scatter(nn.functional.one_hot(z), batch, dim=0).to(energy.dtype)
+#             solution = torch.linalg.lstsq(formula, energy, driver='gelsd').solution
+#             energy_shifts = solution[z_unique]
+#             energy_scale = ((energy - torch.matmul(formula, solution)).square().sum() / (formula).sum()).sqrt()
+#             stats['properties']['energy'] = {'shift': energy_shifts, 'scale': energy_scale}
+#         except AttributeError:
+#             pass
+#         try:
+#             force = data.force.norm(dim=-1).cpu()
+#             force_scale = scatter(force, z, reduce='mean')
+#             force_scale = force_scale[z_unique]
+#             stats['properties']['force'] = {'scale': force_scale}
+#         except AttributeError:
+#             pass
+#         return stats
