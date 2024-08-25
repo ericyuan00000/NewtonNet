@@ -179,4 +179,40 @@ def parse_xyz(raw_path: str, pre_transform: Callable, pre_filter: Callable, prec
             data = pre_transform(data)
         data_list.append(data)
 
-    return data_list
+        return data_list
+
+
+class MolecularStatistics(nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+
+    def forward(self, data):
+        stats = {}
+
+        z = data.z.long().cpu()
+        z_unique = z.unique()
+        # stats['z'] = z_unique
+
+        batch = data.batch.cpu()
+
+        try:
+            energy = data.energy.cpu()
+            formula = scatter(nn.functional.one_hot(z), batch, dim=0).to(energy.dtype)
+            solution = torch.linalg.lstsq(formula, energy, driver='gelsd').solution
+            energy_shifts = torch.zeros(118 + 1, dtype=energy.dtype, device=energy.device)
+            energy_shifts[z_unique] = solution[z_unique]
+            stds = ((energy - torch.matmul(formula, solution)).square().sum() / (formula).sum()).sqrt()
+            energy_scale = torch.ones(118 + 1, dtype=energy.dtype, device=energy.device)
+            energy_scale[z_unique] = stds
+            stats['energy'] = {'shift': energy_shifts, 'scale': energy_scale}
+        except AttributeError:
+            pass
+        try:
+            force = data.force.norm(dim=-1).cpu()
+            means = scatter(force, z, reduce='mean')
+            force_scale = torch.ones(118 + 1, dtype=force.dtype, device=force.device)
+            force_scale[z_unique] = means[z_unique]
+            stats['force'] = {'scale': force_scale}
+        except AttributeError:
+            pass
+        return stats

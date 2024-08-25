@@ -4,6 +4,8 @@ import torch
 from torch.utils.data import random_split
 from torch_geometric.loader import DataLoader
 
+from newtonnet.data import MolecularStatistics
+
 
 def parse_train_test(
         in_memory: bool = True,
@@ -16,6 +18,7 @@ def parse_train_test(
         train_batch_size: int = 32,
         val_batch_size: int = 32,
         test_batch_size: int = 32,
+        stats_batch_size: int = 32,
         **dataset_kwargs,
         ):
     '''
@@ -32,6 +35,7 @@ def parse_train_test(
         train_batch_size (int): The batch size for training. Default: 32.
         val_batch_size (int): The batch size for validation. Default: 32.
         test_batch_size (int): The batch size for testing. Default: 32.
+        stats_batch_size (int): The batch size for statistics calculation. Default: 32.
         dataset_kwargs (dict): The keyword arguments for MolecularDataset.
 
     Returns:
@@ -74,6 +78,45 @@ def parse_train_test(
     train_gen = DataLoader(dataset=train_data, batch_size=train_batch_size, shuffle=True)
     val_gen = DataLoader(dataset=val_data, batch_size=val_batch_size, shuffle=(len(val_data) > 0))
     test_gen = DataLoader(dataset=test_data, batch_size=test_batch_size, shuffle=(len(test_data) > 0))
+    stats_gen = DataLoader(dataset=train_data, batch_size=stats_batch_size, shuffle=True)
     print(f'batch size (train, val, test): {train_batch_size}, {val_batch_size}, {test_batch_size}')
 
-    return train_gen, val_gen, test_gen
+    # extract data stats
+    stats_calc = MolecularStatistics()
+    for batch in stats_gen:
+        stats = stats_calc(batch)
+        break
+    # print('stats:')
+    # print_stats(stats)
+
+    return train_gen, val_gen, test_gen, stats
+
+# def process_stats(stats_raw):
+#     stats = {'z': [], 'properties': {}}
+#     for stat in stats_raw:
+#         stats['z'].append(stat['z'])
+#         for prop, prop_dict in stat['properties'].items():  # prop: 'energy', 'force', etc
+#             if prop not in stats['properties']:
+#                 stats['properties'][prop] = {}
+#             for key, value in prop_dict.items():  # key: 'scale', 'shift'
+#                 if key not in stats['properties'][prop]:
+#                     stats['properties'][prop][key] = []
+#                 if value.ndim > 0:
+#                     value_dense = torch.full((129, ), torch.nan, dtype=value.dtype)
+#                     value_dense[stat['z']] = value
+#                     value = value_dense
+#                 stats['properties'][prop][key].append(value)
+#     stats['z'] = torch.cat(stats['z']).unique()
+#     for prop, prop_dict in stats['properties'].items():
+#         for key, value in prop_dict.items():
+#             stats['properties'][prop][key] = torch.stack(value).nanmean(dim=0).nan_to_num()
+#     return stats
+
+# def print_stats(stats, level=1):
+#     for key, value in stats.items():
+#         if isinstance(value, dict):
+#             print('  ' * level + f'{key}:')
+#             print_stats(value, level + 1)
+#         else:
+#             print('  ' * level + f'{key}: {value[value != 0]}')
+#     return stats

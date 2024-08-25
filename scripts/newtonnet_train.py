@@ -12,6 +12,7 @@ from newtonnet.data import RadiusGraph
 from newtonnet.data import parse_train_test
 from newtonnet.layers.precision import get_precison_by_string
 from newtonnet.layers.representations import get_representation_by_string
+from newtonnet.layers.scalers import set_scaler_by_string
 from newtonnet.train.loss import get_loss_by_string
 from newtonnet.train.optimizer import get_optimizer_by_string, get_scheduler_by_string
 # torch.autograd.set_detect_anomaly(True)
@@ -67,14 +68,13 @@ transform = Compose([
     ToDevice(device[0]),
     RadiusGraph(settings['data'].pop('cutoff')),
     ])
-train_gen, val_gen, test_gen = parse_train_test(
+train_gen, val_gen, test_gen, stats = parse_train_test(
     precision=precision,
     transform=transform,
     **settings['data'],
     )
 
 # model
-# scalers = {key: get_scaler_by_string(key, **stat) for key, stat in stats['properties'].items()}
 represenations = get_representation_by_string(
     cutoff=transform.transforms[1].r, 
     **settings['model'].pop('representation', {}),
@@ -83,48 +83,39 @@ pretrained_model = settings['model'].pop('pretrained_model', None)
 if pretrained_model is not None:
     model = torch.load(pretrained_model['path'], map_location=device[0])
     model.to(precision)
-    if pretrained_model['freeze_encoder']:
+    if pretrained_model.get('freeze_encoder', False):
         for param in model.embedding_layer.parameters():
             param.requires_grad = False
         for param in model.interaction_layers.parameters():
             param.requires_grad = False
+    if pretrained_model.get('freeze_decoder', False):
+        for param in model.output_layers.parameters():
+            param.requires_grad = False
+    if pretrained_model.get('freeze_scaler', False):
+        for param in model.scalers.parameters():
+            param.requires_grad = False
 else:
     model = NewtonNet(
         representations=represenations,
-        # scalers=scalers,
         **settings['model'],
         )
     model.to(device[0])
     model.to(precision)
 
 # fit scalers
-# loss
-main_loss, eval_loss = get_loss_by_string({key: {} for key in settings['model']['infer_properties'] if key not in ['gradient_force']})
-# optimizer
-fit_params = [p for name, p in model.named_parameters() if 'shift' in name and p.requires_grad]
-fit_optimizer = get_optimizer_by_string('sgd', fit_params, lr=0.5/len(train_gen))
-# trainer
-fit_trainer = Trainer(
-    model=model,
-    loss_fns=(main_loss, eval_loss),
-    optimizer=fit_optimizer,
-    device=device,
-    train_generator=train_gen,
-    val_generator=val_gen,
-    test_generator=test_gen,
-    epochs=1,
-    )
-fit_trainer.train()
+for key, scaler in zip(model.infer_properties, model.scalers):
+    set_scaler_by_string(key, scaler, stats, **settings['training'].pop('fit_scalers', {}))
 
-# training
 # loss
 main_loss, eval_loss = get_loss_by_string(settings['training'].pop('loss', None))
+
 # optimizer
 trainable_params = filter(lambda p: p.requires_grad, model.parameters())
 optimizer, optimizer_kwargs = settings['training'].pop('optimizer', {'adam': {}}).popitem()
 optimizer = get_optimizer_by_string(optimizer, trainable_params, **optimizer_kwargs)
 lr_scheduler = settings['training'].pop('lr_scheduler', None).items()
 lr_scheduler = get_scheduler_by_string(lr_scheduler, optimizer)
+
 # trainer
 trainer = Trainer(
     model=model,
