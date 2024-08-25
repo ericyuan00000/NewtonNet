@@ -28,7 +28,7 @@ class NewtonNet(nn.Module):
             layer_norm: bool = False,
             infer_properties: list = [],
             representations: nn.Module = None,
-            scalers: dict = None,
+            # scalers: dict = None,
             train_scaler: bool = False,
     ) -> None:
 
@@ -38,7 +38,7 @@ class NewtonNet(nn.Module):
         # embedding layer
         self.embedding_layer = EmbeddingNet(
             n_features=n_features,
-            z_max=max([scaler.z_max for scaler in scalers.values()]) if scalers else 128,
+            # z_max=max([scaler.z_max for scaler in scalers.values()]) if scalers else 128,
             representations=representations,
             )
 
@@ -55,7 +55,7 @@ class NewtonNet(nn.Module):
         # final output layer
         self.output_layers = nn.ModuleList()
         for key in infer_properties:
-            output_layer = get_output_by_string(key, n_features, activation, scalers)
+            output_layer = get_output_by_string(key, n_features, activation)
             output_layer.scaler.requires_grad_(train_scaler)
             self.output_layers.append(output_layer)
             if isinstance(output_layer, FirstDerivativeProperty):
@@ -103,16 +103,15 @@ class EmbeddingNet(nn.Module):
 
     Parameters:
         n_features (int): Number of features in the hidden layer.
-        z_max (int): Maximum atomic number.
         representations (dict): The distance transformation functions.
     '''
-    def __init__(self, n_features, z_max, representations):
+    def __init__(self, n_features, representations):
 
         super(EmbeddingNet, self).__init__()
 
         # atomic embedding
         self.n_features = n_features
-        self.node_embedding = nn.Embedding(z_max + 1, n_features)
+        self.node_embedding = nn.Embedding(129, n_features)
 
         # edge embedding
         self.norm = representations['norm']
