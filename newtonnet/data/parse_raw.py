@@ -13,7 +13,6 @@ def parse_train_test(
         train_size: int = None,
         val_size: int = None,
         test_size: int = None,
-        stats_size: int = 1000,
         train_batch_size: int = 32,
         val_batch_size: int = 32,
         test_batch_size: int = 32,
@@ -30,7 +29,6 @@ def parse_train_test(
         train_size (int): The size of the training set. If None, use all available data. Default: None.
         val_size (int): The size of the validation set. If None, use all available data. Default: None.
         test_size (int): The size of the test set. If None, use all available data. Default: None.
-        stats_size (int): The size of the data for calculating statistics. Default: 1000.
         train_batch_size (int): The batch size for training. Default: 32.
         val_batch_size (int): The batch size for validation. Default: 32.
         test_batch_size (int): The batch size for testing. Default: 32.
@@ -56,7 +54,6 @@ def parse_train_test(
         raise ValueError('train_root must be provided')
     train_size = len(train_data) if train_size is None else train_size
     train_data, left_data = random_split(train_data, [train_size, len(train_data) - train_size])
-    stats_data, _ = random_split(train_data, [stats_size, len(train_data) - stats_size])
     if val_root is not None:
         val_data = MolecularDataset(root=val_root, **dataset_kwargs)
         print(f'load {len(val_data)} data from {val_root}')
@@ -75,48 +72,8 @@ def parse_train_test(
 
     # create data loader
     train_gen = DataLoader(dataset=train_data, batch_size=train_batch_size, shuffle=True)
-    stats_gen = DataLoader(dataset=stats_data, batch_size=stats_size, shuffle=False)
     val_gen = DataLoader(dataset=val_data, batch_size=val_batch_size, shuffle=(len(val_data) > 0))
     test_gen = DataLoader(dataset=test_data, batch_size=test_batch_size, shuffle=(len(test_data) > 0))
     print(f'batch size (train, val, test): {train_batch_size}, {val_batch_size}, {test_batch_size}')
 
-    # extract data stats
-    # stats_raw = []
-    # stats_calc = MolecularStatistics()
-    # for train_batch in tqdm(train_gen):
-    #     stats_raw.append(stats_calc(train_batch))
-    # stats = process_stats(stats_raw)
-    # print('stats:')
-    # print_stats(stats)
-
-    return train_gen, val_gen, test_gen#, stats
-
-# def process_stats(stats_raw):
-#     stats = {'z': [], 'properties': {}}
-#     for stat in stats_raw:
-#         stats['z'].append(stat['z'])
-#         for prop, prop_dict in stat['properties'].items():  # prop: 'energy', 'force', etc
-#             if prop not in stats['properties']:
-#                 stats['properties'][prop] = {}
-#             for key, value in prop_dict.items():  # key: 'scale', 'shift'
-#                 if key not in stats['properties'][prop]:
-#                     stats['properties'][prop][key] = []
-#                 if value.ndim > 0:
-#                     value_dense = torch.full((129, ), torch.nan, dtype=value.dtype)
-#                     value_dense[stat['z']] = value
-#                     value = value_dense
-#                 stats['properties'][prop][key].append(value)
-#     stats['z'] = torch.cat(stats['z']).unique()
-#     for prop, prop_dict in stats['properties'].items():
-#         for key, value in prop_dict.items():
-#             stats['properties'][prop][key] = torch.stack(value).nanmean(dim=0).nan_to_num()
-#     return stats
-
-# def print_stats(stats, level=1):
-#     for key, value in stats.items():
-#         if isinstance(value, dict):
-#             print('  ' * level + f'{key}:')
-#             print_stats(value, level + 1)
-#         else:
-#             print('  ' * level + f'{key}: {value[value != 0]}')
-#     return stats
+    return train_gen, val_gen, test_gen
