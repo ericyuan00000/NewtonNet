@@ -4,7 +4,7 @@ import torch
 from torch.utils.data import random_split
 from torch_geometric.loader import DataLoader
 
-from newtonnet.data import MolecularDataset#, MolecularStatistics
+from newtonnet.data import MolecularDataset, MolecularStatistics
 
 
 def parse_train_test(
@@ -17,6 +17,7 @@ def parse_train_test(
         train_batch_size: int = 32,
         val_batch_size: int = 32,
         test_batch_size: int = 32,
+        stats_batch_size: int = 32,
         **dataset_kwargs,
         ):
     '''
@@ -32,6 +33,7 @@ def parse_train_test(
         train_batch_size (int): The batch size for training. Default: 32.
         val_batch_size (int): The batch size for validation. Default: 32.
         test_batch_size (int): The batch size for testing. Default: 32.
+        stats_batch_size (int): The batch size for statistics calculation. Default: 32.
         dataset_kwargs (dict): The keyword arguments for MolecularDataset.
 
     Returns:
@@ -69,18 +71,18 @@ def parse_train_test(
     train_gen = DataLoader(dataset=train_data, batch_size=train_batch_size, shuffle=True)
     val_gen = DataLoader(dataset=val_data, batch_size=val_batch_size, shuffle=(len(val_data) > 0))
     test_gen = DataLoader(dataset=test_data, batch_size=test_batch_size, shuffle=(len(test_data) > 0))
+    stats_gen = DataLoader(dataset=train_data, batch_size=stats_batch_size, shuffle=True)
     print(f'batch size (train, val, test): {train_batch_size}, {val_batch_size}, {test_batch_size}')
 
     # extract data stats
-    # stats_raw = []
-    # stats_calc = MolecularStatistics()
-    # for train_batch in tqdm(train_gen):
-    #     stats_raw.append(stats_calc(train_batch))
-    # stats = process_stats(stats_raw)
+    stats_calc = MolecularStatistics()
+    for batch in stats_gen:
+        stats = stats_calc(batch)
+        break
     # print('stats:')
     # print_stats(stats)
 
-    return train_gen, val_gen, test_gen#, stats
+    return train_gen, val_gen, test_gen, stats
 
 # def process_stats(stats_raw):
 #     stats = {'z': [], 'properties': {}}
