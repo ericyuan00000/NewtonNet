@@ -40,8 +40,8 @@ class ScaleShift(nn.Module):
         # else:
         #     self.scale = nn.Embedding.from_pretrained(scale.reshape(-1, 1), freeze=False)
         #     self.z_max = max(self.z_max, scale.size(0) - 1)
-        self.scale = nn.Embedding.from_pretrained(torch.ones(129, 1), freeze=False) if scale else None
-        self.shift = nn.Embedding.from_pretrained(torch.zeros(129, 1), freeze=False) if shift else None
+        self.scale = nn.Embedding.from_pretrained(torch.ones(118 + 1, 1), freeze=False) if scale else None
+        self.shift = nn.Embedding.from_pretrained(torch.zeros(118 + 1, 1), freeze=False) if shift else None
 
     def forward(self, input, z):
         '''

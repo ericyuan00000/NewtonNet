@@ -111,7 +111,7 @@ class EmbeddingNet(nn.Module):
 
         # atomic embedding
         self.n_features = n_features
-        self.node_embedding = nn.Embedding(129, n_features)
+        self.node_embedding = nn.Embedding(118 + 1, n_features)
 
         # edge embedding
         self.norm = representations['norm']
