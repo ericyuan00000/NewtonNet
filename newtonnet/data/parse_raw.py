@@ -15,10 +15,10 @@ def parse_train_test(
         train_size: int = None,
         val_size: int = None,
         test_size: int = None,
+        stats_size: int = None,
         train_batch_size: int = 32,
         val_batch_size: int = 32,
         test_batch_size: int = 32,
-        stats_batch_size: int = 32,
         **dataset_kwargs,
         ):
     '''
@@ -78,7 +78,7 @@ def parse_train_test(
     train_gen = DataLoader(dataset=train_data, batch_size=train_batch_size, shuffle=True)
     val_gen = DataLoader(dataset=val_data, batch_size=val_batch_size, shuffle=(len(val_data) > 0))
     test_gen = DataLoader(dataset=test_data, batch_size=test_batch_size, shuffle=(len(test_data) > 0))
-    stats_gen = DataLoader(dataset=train_data, batch_size=stats_batch_size, shuffle=True)
+    stats_gen = DataLoader(dataset=train_data, batch_size=stats_size if stats_size is not None else len(train_data), shuffle=True)
     print(f'batch size (train, val, test): {train_batch_size}, {val_batch_size}, {test_batch_size}')
 
     # extract data stats
