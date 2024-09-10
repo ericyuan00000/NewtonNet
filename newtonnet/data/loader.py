@@ -179,7 +179,7 @@ def parse_xyz(raw_path: str, pre_transform: Callable, pre_filter: Callable, prec
             data = pre_transform(data)
         data_list.append(data)
 
-        return data_list
+    return data_list
 
 
 class MolecularStatistics(nn.Module):
