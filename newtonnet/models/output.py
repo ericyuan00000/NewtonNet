@@ -6,7 +6,7 @@ from torch_geometric.utils import scatter
 from newtonnet.layers.scalers import ScaleShift
 
 
-def get_output_by_string(key, n_features, activation):
+def get_output_by_string(key, n_features=None, activation=None):
     if key == 'energy':
         output_layer = EnergyOutput(n_features, activation)
     elif key == 'gradient_force':
@@ -28,7 +28,7 @@ def get_output_by_string(key, n_features, activation):
 def get_aggregator_by_string(key):
     if key == 'energy':
         aggregator = SumAggregator()
-    elif key == 'gradient_force':
+    elif key == 'gradient_force' or key == 'forces':
         aggregator = NullAggregator()
     elif key == 'direct_force':
         aggregator = NullAggregator()

@@ -4,6 +4,11 @@ from ase.calculators.calculator import Calculator
 import torch
 from torch_geometric.nn import radius_graph
 
+from newtonnet.layers.activations import get_activation_by_string
+from newtonnet.layers.scalers import get_scaler_by_string
+from newtonnet.models.output import get_output_by_string, get_aggregator_by_string
+from newtonnet.models.output import CustomOutputSet, FirstDerivativeProperty, SecondDerivativeProperty
+
 
 ##-------------------------------------
 ##     ML model ASE interface
@@ -48,16 +53,24 @@ class MLAseCalculator(Calculator):
             model_path = [model_path]
         for model in model_path:
             model = torch.load(model, map_location=self.device[0])
-            # for key in self.properties:
-            #     if key in model.output_layers.keys():
-            #         continue
-            #     output_layer = get_output_by_string(key)
-            #     model.output_layers.update({key: output_layer})
-            #     if isinstance(output_layer, FirstDerivativeProperty):
-            #         model.embedding_layer.requires_dr = True
-            #     if isinstance(output_layer, SecondDerivativeProperty):
-            #         assert output_layer.dependent_property in model.output_layers.keys(), f'cannot find dependent property {output_layer.dependent_property}'
-            #         model.output_layers[output_layer.dependent_property].requires_dr = True
+            for key in self.properties:
+                if (key == 'forces') and ('gradient_force' in model.infer_properties):
+                    key = 'gradient_force'
+                if key in model.infer_properties:
+                    continue
+                model.infer_properties.append(key)
+                output_layer = get_output_by_string(key)
+                model.output_layers.append(output_layer)
+                if isinstance(output_layer, FirstDerivativeProperty):
+                    model.embedding_layer.requires_dr = True
+                # if isinstance(output_layer, SecondDerivativeProperty):
+                #     dependent_property = output_layer.dependent_property
+                #     assert dependent_property in self.output_layers.keys(), f'cannot find dependent property {dependent_property}'
+                #     self.output_layers[dependent_property].requires_dr = True
+                scaler = get_scaler_by_string(key)
+                model.scalers.append(scaler)
+                aggregator = get_aggregator_by_string(key)
+                model.aggregators.append(aggregator)
             self.dtype = next(model.named_parameters())[1].dtype
             self.models.append(model)
         
@@ -78,7 +91,7 @@ class MLAseCalculator(Calculator):
         try:
             edge_index = torch.tensor(atoms.edge_index, dtype=torch.long, device=self.device[0])
             disp = torch.tensor(atoms.disp, dtype=torch.float, device=self.device[0])
-            print('using precomputed edge_index')
+            # print('using precomputed edge_index')
         except AttributeError:
             # edge_index = torch.tensor(
             #     np.stack(neighbor_list('ij', atoms, cutoff=float(self.models[0].embedding_layer.norm.r))), 
@@ -89,7 +102,7 @@ class MLAseCalculator(Calculator):
                 max_num_neighbors=1024,
             )
             disp = pos[edge_index[0]] - pos[edge_index[1]]
-            print('using radius_graph')
+            # print('using radius_graph')
         batch = torch.zeros_like(z, dtype=torch.long, device=self.device[0])
         for model_, model in enumerate(self.models):
             pred = model(z, disp, edge_index, batch)
