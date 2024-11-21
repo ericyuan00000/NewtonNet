@@ -2,12 +2,13 @@ import numpy as np
 from ase.calculators.calculator import Calculator
 
 import torch
-from torch_geometric.nn import radius_graph
+from torch_geometric.data import Data
 
 from newtonnet.layers.activations import get_activation_by_string
 from newtonnet.layers.scalers import get_scaler_by_string
 from newtonnet.models.output import get_output_by_string, get_aggregator_by_string
 from newtonnet.models.output import CustomOutputSet, DerivativeProperty
+from newtonnet.data import RadiusGraph
 
 
 ##-------------------------------------
@@ -70,6 +71,8 @@ class MLAseCalculator(Calculator):
             self.dtype = next(model.named_parameters())[1].dtype
             self.models.append(model)
         
+        self.radius_graph = RadiusGraph(self.models[0].embedding_layer.norm.r)
+        
         self.script = script
         self.trace_n_atoms = trace_n_atoms
         self.disagreement = disagreement
@@ -86,24 +89,28 @@ class MLAseCalculator(Calculator):
             preds['hessian'] = np.zeros((len(self.models), len(atoms), 3, len(atoms), 3))
         z = torch.tensor(atoms.numbers, dtype=torch.long, device=self.device[0])
         pos = torch.tensor(atoms.positions, dtype=torch.float, device=self.device[0])
-        try:
-            edge_index = torch.tensor(atoms.edge_index, dtype=torch.long, device=self.device[0])
-            disp = torch.tensor(atoms.disp, dtype=torch.float, device=self.device[0])
-            # print('using precomputed edge_index')
-        except AttributeError:
-            # edge_index = torch.tensor(
-            #     np.stack(neighbor_list('ij', atoms, cutoff=float(self.models[0].embedding_layer.norm.r))), 
-            #     dtype=torch.long, device=self.device[0])
-            edge_index = radius_graph(
-                pos,
-                self.models[0].embedding_layer.norm.r,
-                max_num_neighbors=1024,
-            )
-            disp = pos[edge_index[0]] - pos[edge_index[1]]
-            # print('using radius_graph')
+        # try:
+        #     edge_index = torch.tensor(atoms.edge_index, dtype=torch.long, device=self.device[0])
+        #     disp = torch.tensor(atoms.disp, dtype=torch.float, device=self.device[0])
+        #     # print('using precomputed edge_index')
+        # except AttributeError:
+        #     # edge_index = torch.tensor(
+        #     #     np.stack(neighbor_list('ij', atoms, cutoff=float(self.models[0].embedding_layer.norm.r))), 
+        #     #     dtype=torch.long, device=self.device[0])
+        #     edge_index = radius_graph(
+        #         pos,
+        #         self.models[0].embedding_layer.norm.r,
+        #         max_num_neighbors=1024,
+        #     )
+        #     disp = pos[edge_index[0]] - pos[edge_index[1]]
+        #     # print('using radius_graph')
         batch = torch.zeros_like(z, dtype=torch.long, device=self.device[0])
+        lattice = torch.tensor(atoms.get_cell().array, dtype=torch.float, device=self.device[0])
+        lattice[~atoms.get_pbc()] = torch.inf
+        data = Data(pos=pos, z=z, lattice=lattice, batch=batch)
+        data = self.radius_graph(data)
         for model_, model in enumerate(self.models):
-            pred = model(z, disp, edge_index, batch)
+            pred = model(data.z, data.disp, data.edge_index, data.batch)
             if 'energy' in self.properties:
                 preds['energy'][model_] = pred.energy.cpu().detach().numpy()
             if 'forces' in self.properties:
