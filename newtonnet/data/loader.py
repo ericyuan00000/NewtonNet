@@ -159,7 +159,7 @@ def parse_xyz(raw_path: str, pre_transform: Callable, pre_filter: Callable, prec
     for atoms in atoms_list:
         atoms.set_constraint()
         z = torch.from_numpy(atoms.get_atomic_numbers()).int()
-        pos = torch.from_numpy(atoms.get_positions()).to(precision)
+        pos = torch.from_numpy(atoms.get_positions(wrap=True)).to(precision)
         lattice = torch.from_numpy(atoms.get_cell().array).to(precision)
         lattice[lattice.norm(dim=-1) < 1e-3] = torch.inf
         lattice[~atoms.get_pbc()] = torch.inf
