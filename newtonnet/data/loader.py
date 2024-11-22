@@ -6,6 +6,8 @@ import numpy as np
 import ase
 from ase import units
 from ase.io import read
+setattr(units, 'kcal/mol', units.kcal / units.mol)
+setattr(units, 'kJ/mol', units.kJ / units.mol)
 
 import torch
 import torch.nn as nn
