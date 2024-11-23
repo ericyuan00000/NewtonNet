@@ -37,9 +37,8 @@ class RadiusGraph(BaseTransform):
 
     def forward(self, data: Data) -> Data:
         assert data.pos is not None
-        assert data.lattice is not None
 
-        if data.lattice.max(dim=-1).values.isfinite().any():
+        if data.lattice is not None and data.lattice.max(dim=-1).values.isfinite().any():
             shift = torch.tensor([[i, j, k] for i in [-1, 0, 1] for j in [-1, 0, 1] for k in [-1, 0, 1]], dtype=data.pos.dtype, device=data.pos.device)
             shift = shift @ data.lattice
             shift = shift.nan_to_num()
