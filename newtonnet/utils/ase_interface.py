@@ -87,8 +87,8 @@ class MLAseCalculator(Calculator):
             preds['forces'] = np.zeros((len(self.models), len(atoms), 3))
         if 'hessian' in self.properties:
             preds['hessian'] = np.zeros((len(self.models), len(atoms), 3, len(atoms), 3))
-        z = torch.tensor(atoms.numbers, dtype=torch.long, device=self.device[0])
-        pos = torch.tensor(atoms.positions, dtype=torch.float, device=self.device[0])
+        z = torch.tensor(atoms.get_atomic_numbers(), dtype=torch.long, device=self.device[0])
+        pos = torch.tensor(atoms.get_positions(wrap=True), dtype=torch.float, device=self.device[0])
         # try:
         #     edge_index = torch.tensor(atoms.edge_index, dtype=torch.long, device=self.device[0])
         #     disp = torch.tensor(atoms.disp, dtype=torch.float, device=self.device[0])
