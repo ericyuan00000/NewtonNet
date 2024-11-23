@@ -15,13 +15,13 @@ from newtonnet.data import RadiusGraph
 ##     ML model ASE interface
 ##--------------------------------------
 class MLAseCalculator(Calculator):
-    implemented_properties = ['energy', 'forces', 'hessian']
+    implemented_properties = ['energy', 'forces', 'hessian', 'stress']
 
     ### Constructor ###
     def __init__(
             self, 
             model_path: str,
-            properties: list = ['energy', 'forces'], 
+            properties: list = ['energy', 'forces', 'stress'], 
             disagreement: str = 'std',
             device: str | list[str] = 'cpu',
             script: bool = False,
@@ -78,7 +78,7 @@ class MLAseCalculator(Calculator):
         self.disagreement = disagreement
         
 
-    def calculate(self, atoms=None, properties=['energy', 'forces'], system_changes=None):
+    def calculate(self, atoms=None, properties=['energy', 'forces', 'stress'], system_changes=None):
         super().calculate(atoms, self.properties, system_changes)
         preds = {}
         if 'energy' in self.properties:
@@ -87,6 +87,8 @@ class MLAseCalculator(Calculator):
             preds['forces'] = np.zeros((len(self.models), len(atoms), 3))
         if 'hessian' in self.properties:
             preds['hessian'] = np.zeros((len(self.models), len(atoms), 3, len(atoms), 3))
+        if 'stress' in self.properties:
+            preds['stress'] = np.zeros((len(self.models), 6))
         z = torch.tensor(atoms.get_atomic_numbers(), dtype=torch.long, device=self.device[0])
         pos = torch.tensor(atoms.get_positions(wrap=True), dtype=torch.float, device=self.device[0])
         # try:
@@ -117,6 +119,8 @@ class MLAseCalculator(Calculator):
                 preds['forces'][model_] = pred.gradient_force.cpu().detach().numpy()
             if 'hessian' in self.properties:
                 preds['hessian'][model_] = pred.hessian.cpu().detach().numpy()
+            if 'stress' in self.properties:
+                preds['stress'][model_] = pred.stress.cpu().detach().numpy()[0, [0, 4, 8, 5, 2, 1]] / atoms.get_volume() / 2
             del pred
 
         self.results['outlier'] = self.q_test(preds['energy'])

@@ -16,6 +16,8 @@ def get_output_by_string(key, n_features=None, activation=None):
         output_layer = DirectForceOutput(n_features, activation)
     elif key == 'hessian':
         output_layer = HessianOutput()
+    elif key == 'stress':
+        output_layer = StressOutput()
     else:
         raise NotImplementedError(f'Output type {key} is not implemented yet')
     return output_layer
@@ -28,6 +30,8 @@ def get_aggregator_by_string(key):
     elif key == 'direct_force':
         aggregator = NullAggregator()
     elif key == 'hessian':
+        aggregator = NullAggregator()
+    elif key == 'stress':
         aggregator = NullAggregator()
     else:
         raise NotImplementedError(f'Aggregate type {key} is not implemented yet')
@@ -133,6 +137,29 @@ class HessianOutput(DerivativeProperty):
             scatter(hessian, outputs.edge_index[1], dim=2, reduce='sum', dim_size=outputs.atom_node.size(0))
         # outputs.hessian = hessian
         return hessian
+    
+class StressOutput(DerivativeProperty):
+    '''
+    Stress prediction
+    '''
+    def __init__(self):
+        super(StressOutput, self).__init__()
+
+    def forward(self, outputs):
+        force = grad(
+            outputs.energy, 
+            outputs.disp, 
+            grad_outputs=torch.ones_like(outputs.energy),
+            create_graph=True, 
+            retain_graph=True,
+            )[0]
+        stress = outputs.disp[:, :, None] * force[:, None, :]
+        stress = stress.reshape(-1, 9)
+        stress = scatter(stress, outputs.edge_index[0], dim=0, reduce='sum', dim_size=outputs.atom_node.size(0)) + \
+            scatter(stress, outputs.edge_index[1], dim=0, reduce='sum', dim_size=outputs.atom_node.size(0))
+        stress = scatter(stress, outputs.batch, dim=0, reduce='sum')
+        # stress = stress / outputs.volume / 2  # Volume should be included in the stress tensor
+        return stress
     
 
 class SumAggregator(nn.Module):
