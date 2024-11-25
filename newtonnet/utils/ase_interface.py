@@ -120,7 +120,7 @@ class MLAseCalculator(Calculator):
             if 'hessian' in self.properties:
                 preds['hessian'][model_] = pred.hessian.cpu().detach().numpy()
             if 'stress' in self.properties:
-                preds['stress'][model_] = pred.stress.cpu().detach().numpy()[0, [0, 4, 8, 5, 2, 1]] / atoms.get_volume()
+                preds['stress'][model_] = pred.stress.cpu().detach().numpy()[0, [0, 4, 8, 5, 2, 1]] / atoms.get_volume() / 4
             del pred
 
         self.results['outlier'] = self.q_test(preds['energy'])
