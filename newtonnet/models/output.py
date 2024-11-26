@@ -157,7 +157,7 @@ class StressOutput(DerivativeProperty):
         stress = stress.reshape(-1, 9)
         stress = scatter(stress, outputs.edge_index[0], dim=0, reduce='sum', dim_size=outputs.atom_node.size(0)) + \
             scatter(stress, outputs.edge_index[1], dim=0, reduce='sum', dim_size=outputs.atom_node.size(0))
-        stress = scatter(stress, outputs.batch, dim=0, reduce='sum')
+        stress = -scatter(stress, outputs.batch, dim=0, reduce='sum') / 2
         # stress = stress / outputs.volume / 2  # Volume should be included in the stress tensor
         return stress
     
