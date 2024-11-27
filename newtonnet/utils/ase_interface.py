@@ -57,7 +57,7 @@ class MLAseCalculator(Calculator):
             model_path = [model_path]
         for model in model_path:
             model = torch.load(model, map_location=self.device[0])
-            keys_to_keep = []
+            keys_to_keep = ['energy']
             for key in self.properties:
                 key = 'energy' if key == 'free_energy' else key
                 key = 'gradient_force' if key == 'forces' else key
@@ -89,14 +89,15 @@ class MLAseCalculator(Calculator):
     def calculate(self, atoms=None, properties=['energy', 'forces', 'stress'], system_changes=None):
         super().calculate(atoms, self.properties, system_changes)
         preds = {}
-        preds['energy'] = np.zeros(len(self.models))
-        if 'free_energy' in properties:
+        if 'energy' in self.properties:
+            preds['energy'] = np.zeros(len(self.models))
+        if 'free_energy' in self.properties:
             preds['free_energy'] = np.zeros(len(self.models))
-        if 'forces' in properties:
+        if 'forces' in self.properties:
             preds['forces'] = np.zeros((len(self.models), len(atoms), 3))
-        if 'hessian' in properties:
+        if 'hessian' in self.properties:
             preds['hessian'] = np.zeros((len(self.models), len(atoms), 3, len(atoms), 3))
-        if 'stress' in properties:
+        if 'stress' in self.properties:
             preds['stress'] = np.zeros((len(self.models), 6))
         z = torch.tensor(atoms.get_atomic_numbers(), dtype=torch.long, device=self.device[0])
         pos = torch.tensor(atoms.get_positions(wrap=True), dtype=torch.float, device=self.device[0])
@@ -107,7 +108,8 @@ class MLAseCalculator(Calculator):
         data = self.radius_graph(data)
         for model_, model in enumerate(self.models):
             pred = model(data.z, data.disp, data.edge_index, data.batch)
-            preds['energy'][model_] = pred.energy.cpu().detach().numpy()
+            if 'energy' in self.properties:
+                preds['energy'][model_] = pred.energy.cpu().detach().numpy()
             if 'free_energy' in self.properties:
                 preds['free_energy'][model_] = pred.energy.cpu().detach().numpy()
             if 'forces' in self.properties:
