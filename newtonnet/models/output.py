@@ -48,8 +48,23 @@ class DirectProperty(nn.Module):
     def __init__(self):
         super(DirectProperty, self).__init__()
 class DerivativeProperty(nn.Module):
-    def __init__(self):
+    def __init__(self, create_graph=False):
         super(DerivativeProperty, self).__init__()
+        self.create_graph = create_graph
+
+def get_pairwise_force(outputs, create_graph=False):
+    try:
+        pairwise_force = outputs.pairwise_force
+    except AttributeError:
+        pairwise_force = -grad(
+            outputs.energy, 
+            outputs.disp, 
+            grad_outputs=torch.ones_like(outputs.energy),
+            create_graph=create_graph, 
+            retain_graph=create_graph,
+            )[0]
+        outputs.pairwise_force = pairwise_force
+    return pairwise_force
 
 
 class EnergyOutput(DirectProperty):
@@ -80,19 +95,13 @@ class GradientForceOutput(DerivativeProperty):
     '''
     Gradient force prediction
     '''
-    def __init__(self):
-        super(GradientForceOutput, self).__init__()
+    def __init__(self, create_graph=False):
+        super(GradientForceOutput, self).__init__(create_graph=create_graph)
 
     def forward(self, outputs):
-        force = -grad(
-            outputs.energy, 
-            outputs.disp, 
-            grad_outputs=torch.ones_like(outputs.energy),
-            create_graph=True, 
-            retain_graph=True,
-            )[0]
-        force = scatter(force, outputs.edge_index[0], dim=0, reduce='sum', dim_size=outputs.atom_node.size(0)) - \
-            scatter(force, outputs.edge_index[1], dim=0, reduce='sum', dim_size=outputs.atom_node.size(0))
+        pairwise_force = get_pairwise_force(outputs, create_graph=self.create_graph)
+        force = scatter(pairwise_force, outputs.edge_index[0], dim=0, reduce='sum', dim_size=outputs.atom_node.size(0)) - \
+            scatter(pairwise_force, outputs.edge_index[1], dim=0, reduce='sum', dim_size=outputs.atom_node.size(0))
         # outputs.gradient_force = force
         return force
     
@@ -120,8 +129,8 @@ class HessianOutput(DerivativeProperty):
     '''
     Hessian prediction
     '''
-    def __init__(self):
-        super(HessianOutput, self).__init__()
+    def __init__(self, create_graph=False):
+        super(HessianOutput, self).__init__(create_graph=create_graph)
 
     def forward(self, outputs):
         hessian = torch.vmap(
@@ -129,7 +138,8 @@ class HessianOutput(DerivativeProperty):
                 -outputs.gradient_force.flatten(), 
                 outputs.disp, 
                 grad_outputs=vec, 
-                create_graph=True,
+                create_graph=self.create_graph,
+                retain_graph=True,
                 )[0],
             )(torch.eye(outputs.gradient_force.numel()))
         hessian = hessian.reshape(*outputs.gradient_force.shape, *outputs.disp.shape)
@@ -142,23 +152,16 @@ class StressOutput(DerivativeProperty):
     '''
     Stress prediction
     '''
-    def __init__(self):
-        super(StressOutput, self).__init__()
+    def __init__(self, create_graph=False):
+        super(StressOutput, self).__init__(create_graph=create_graph)
 
     def forward(self, outputs):
-        force = grad(
-            outputs.energy, 
-            outputs.disp, 
-            grad_outputs=torch.ones_like(outputs.energy),
-            create_graph=True, 
-            retain_graph=True,
-            )[0]
-        stress = outputs.disp[:, :, None] * force[:, None, :]
-        stress = stress.reshape(-1, 9)
+        pairwise_force = get_pairwise_force(outputs, create_graph=self.create_graph)
+        stress = outputs.disp[:, :, None] * pairwise_force[:, None, :]
         stress = scatter(stress, outputs.edge_index[0], dim=0, reduce='sum', dim_size=outputs.atom_node.size(0)) + \
             scatter(stress, outputs.edge_index[1], dim=0, reduce='sum', dim_size=outputs.atom_node.size(0))
         stress = scatter(stress, outputs.batch, dim=0, reduce='sum')
-        # stress = stress / outputs.volume / 2  # Volume should be included in the stress tensor
+        # stress = -stress / outputs.volume / 2  # Volume should be included in the stress tensor
         return stress
     
 
