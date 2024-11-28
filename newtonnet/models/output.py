@@ -47,24 +47,25 @@ class CustomOutputSet:
 class DirectProperty(nn.Module):
     def __init__(self):
         super(DirectProperty, self).__init__()
+
 class DerivativeProperty(nn.Module):
     def __init__(self, create_graph=False):
         super(DerivativeProperty, self).__init__()
         self.create_graph = create_graph
 
-def get_pairwise_force(outputs, create_graph=False):
-    try:
-        pairwise_force = outputs.pairwise_force
-    except AttributeError:
-        pairwise_force = -grad(
-            outputs.energy, 
-            outputs.disp, 
-            grad_outputs=torch.ones_like(outputs.energy),
-            create_graph=create_graph, 
-            retain_graph=create_graph,
-            )[0]
-        outputs.pairwise_force = pairwise_force
-    return pairwise_force
+    def get_pairwise_force(self, outputs):
+        try:
+            pairwise_force = outputs.pairwise_force
+        except AttributeError:
+            pairwise_force = -grad(
+                outputs.energy, 
+                outputs.disp, 
+                grad_outputs=torch.ones_like(outputs.energy),
+                create_graph=self.create_graph, 
+                retain_graph=self.create_graph,
+                )[0]
+            outputs.pairwise_force = pairwise_force
+        return pairwise_force
 
 
 class EnergyOutput(DirectProperty):
@@ -99,7 +100,7 @@ class GradientForceOutput(DerivativeProperty):
         super(GradientForceOutput, self).__init__(create_graph=create_graph)
 
     def forward(self, outputs):
-        pairwise_force = get_pairwise_force(outputs, create_graph=self.create_graph)
+        pairwise_force = self.get_pairwise_force(outputs)
         force = scatter(pairwise_force, outputs.edge_index[0], dim=0, reduce='sum', dim_size=outputs.atom_node.size(0)) - \
             scatter(pairwise_force, outputs.edge_index[1], dim=0, reduce='sum', dim_size=outputs.atom_node.size(0))
         # outputs.gradient_force = force
@@ -156,7 +157,7 @@ class StressOutput(DerivativeProperty):
         super(StressOutput, self).__init__(create_graph=create_graph)
 
     def forward(self, outputs):
-        pairwise_force = get_pairwise_force(outputs, create_graph=self.create_graph)
+        pairwise_force = self.get_pairwise_force(outputs)
         stress = outputs.disp[:, :, None] * pairwise_force[:, None, :]
         stress = scatter(stress, outputs.edge_index[0], dim=0, reduce='sum', dim_size=outputs.atom_node.size(0)) + \
             scatter(stress, outputs.edge_index[1], dim=0, reduce='sum', dim_size=outputs.atom_node.size(0))
