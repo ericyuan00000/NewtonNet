@@ -30,7 +30,7 @@ class NewtonNet(nn.Module):
             representations: nn.Module = None,
     ) -> None:
 
-        super(NewtonNet, self).__init__()
+        super().__init__()
         activation = get_activation_by_string(activation)
 
         # embedding layer
@@ -110,7 +110,7 @@ class EmbeddingNet(nn.Module):
     '''
     def __init__(self, n_features, representations):
 
-        super(EmbeddingNet, self).__init__()
+        super().__init__()
 
         # atomic embedding
         self.n_features = n_features
@@ -155,7 +155,7 @@ class InteractionNet(nn.Module):
         layer_norm (bool): Whether to use layer normalization.
     '''
     def __init__(self, n_features, n_basis, activation, layer_norm):
-        super(InteractionNet, self).__init__()
+        super().__init__()
 
         self.n_features = n_features
 
