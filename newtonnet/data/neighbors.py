@@ -11,9 +11,6 @@ class RadiusGraph(BaseTransform):
         r (float): The distance.
         loop (bool, optional): If :obj:`True`, the graph will contain
             self-loops. (default: :obj:`False`)
-        max_num_neighbors (int, optional): The maximum number of neighbors to
-            return for each element in :obj:`y`.
-            This flag is only needed for CUDA tensors. (default: :obj:`1024`)
         flow (str, optional): The flow direction when using in combination with
             message passing (:obj:`"source_to_target"` or
             :obj:`"target_to_source"`). (default: :obj:`"source_to_target"`)
@@ -25,13 +22,12 @@ class RadiusGraph(BaseTransform):
         self,
         r: float,
         loop: bool = False,
-        max_num_neighbors: int = 1024,
         flow: str = 'source_to_target',
         num_workers: int = 1,
     ) -> None:
         self.r = r
         self.loop = loop
-        self.max_num_neighbors = max_num_neighbors
+        self.max_num_neighbors = 32
         self.flow = flow
         self.num_workers = num_workers
 
@@ -80,6 +76,12 @@ class RadiusGraph(BaseTransform):
                 num_workers=self.num_workers,
             )#.sort(dim=0)[0].unique(dim=1)
             data.disp = data.pos[data.edge_index[0]] - data.pos[data.edge_index[1]]
+
+        # Keep the maximum number of neighbors sufficiently large
+        num_edges = data.edge_index.size(1)
+        max_num_neighbors = data.edge_index[0].bincount(minlength=data.pos.size(0)).max()
+        if (num_edges * 2 > self.max_num_neighbors * data.pos.size(0)) or (max_num_neighbors * 2 > self.max_num_neighbors):
+            self.max_num_neighbors *= 2
 
         return data
 
