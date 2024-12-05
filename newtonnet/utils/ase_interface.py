@@ -104,18 +104,19 @@ class MLAseCalculator(Calculator):
                 preds['stress'][model_] = stress.flatten()[[0, 4, 8, 5, 2, 1]]
             del pred
 
-        self.results['outlier'] = self.q_test(preds['energy'])
+        # self.results['outlier'] = self.q_test(preds['energy'])
         for key in self.properties:
-            self.results[key] = self.remove_outlier(preds[key], self.results['outlier']).mean(axis=0)
+            # self.results[key] = self.remove_outlier(preds[key], self.results['outlier']).mean(axis=0)
+            self.results[key] = preds[key].mean(axis=0)
 
-            if self.disagreement == 'std':
-                self.results[key + '_disagreement'] = preds[key].std(axis=0).max()
-            elif self.disagreement == 'std_outlierremoval':
-                self.results[key + '_disagreement'] = self.remove_outlier(preds[key], self.results['outlier']).std(axis=0).max()
-            elif self.disagreement == 'range':
-                self.results[key + '_disagreement'] = (preds[key].max(axis=0) - preds[key].min(axis=0)).max()
-            elif self.disagreement == 'values':
-                self.results[key + '_disagreement'] = preds[key]
+            # if self.disagreement == 'std':
+            #     self.results[key + '_disagreement'] = preds[key].std(axis=0).max()
+            # elif self.disagreement == 'std_outlierremoval':
+            #     self.results[key + '_disagreement'] = self.remove_outlier(preds[key], self.results['outlier']).std(axis=0).max()
+            # elif self.disagreement == 'range':
+            #     self.results[key + '_disagreement'] = (preds[key].max(axis=0) - preds[key].min(axis=0)).max()
+            # elif self.disagreement == 'values':
+            #     self.results[key + '_disagreement'] = preds[key]
             del preds[key]
 
     def load_model(self, model):
@@ -160,39 +161,36 @@ class MLAseCalculator(Calculator):
         batch = Batch.from_data_list(data_list)
         return batch
 
-    def remove_outlier(self, data, idx):
-        if idx is None:
-            return data
-        else:
-            return np.delete(data, idx, axis=0)
+    # def remove_outlier(self, data, idx):
+    #     if idx is None:
+    #         return data
+    #     else:
+    #         return np.delete(data, idx, axis=0)
 
-    def q_test(self, data):
-        '''
-        Dixon's Q test for outlier detection
+    # def q_test(self, data):
+    #     '''
+    #     Dixon's Q test for outlier detection
 
-        Parameters:
-            data (1d array): The data to be tested.
+    #     Parameters:
+    #         data (1d array): The data to be tested.
 
-        Returns:
-            idx (int): The index to be filtered out.
-        '''
-        if len(data) < 3:
-            idx = None
-        else:
-            q_ref = { 3: 0.970,  4: 0.829,  5: 0.710, 
-                      6: 0.625,  7: 0.568,  8: 0.526,  9: 0.493, 10: 0.466, 
-                     11: 0.444, 12: 0.426, 13: 0.410, 14: 0.396, 15: 0.384, 
-                     16: 0.374, 17: 0.365, 18: 0.356, 19: 0.349, 20: 0.342, 
-                     21: 0.337, 22: 0.331, 23: 0.326, 24: 0.321, 25: 0.317, 
-                     26: 0.312, 27: 0.308, 28: 0.305, 29: 0.301, 30: 0.290}.get(len(self.models))  # 95% confidence interval
-            sorted_data = np.sort(data, axis=0)
-            q_stat_min = (sorted_data[1] - sorted_data[0]) / (sorted_data[-1] - sorted_data[0])
-            q_stat_max = (sorted_data[-1] - sorted_data[-2]) / (sorted_data[-1] - sorted_data[0])
-            if q_stat_min > q_ref:
-                idx = np.argmin(data)
-            elif q_stat_max > q_ref:
-                idx = np.argmax(data)
-            else:
-                idx = None
-        return idx
+    #     Returns:
+    #         idx (int): The index to be filtered out.
+    #     '''
+    #     idx = np.full_like(data, np.nan)
+    #     if len(data) >= 3:
+    #         q_ref = { 3: 0.970,  4: 0.829,  5: 0.710, 
+    #                   6: 0.625,  7: 0.568,  8: 0.526,  9: 0.493, 10: 0.466, 
+    #                  11: 0.444, 12: 0.426, 13: 0.410, 14: 0.396, 15: 0.384, 
+    #                  16: 0.374, 17: 0.365, 18: 0.356, 19: 0.349, 20: 0.342, 
+    #                  21: 0.337, 22: 0.331, 23: 0.326, 24: 0.321, 25: 0.317, 
+    #                  26: 0.312, 27: 0.308, 28: 0.305, 29: 0.301, 30: 0.290}.get(len(self.models))  # 95% confidence interval
+    #         sorted_data = np.sort(data, axis=0)
+    #         q_stat_min = (sorted_data[1] - sorted_data[0]) / (sorted_data[-1] - sorted_data[0])
+    #         q_stat_max = (sorted_data[-1] - sorted_data[-2]) / (sorted_data[-1] - sorted_data[0])
+    #         min_mask = q_stat_min > q_ref
+    #         max_mask = q_stat_max > q_ref
+    #         idx[min_mask] = np.argmin(data[:, min_mask], axis=0)
+    #         idx[max_mask] = np.argmax(data[:, max_mask], axis=0)
+    #     return idx
     
