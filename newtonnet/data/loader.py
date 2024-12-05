@@ -90,12 +90,12 @@ class MolecularInMemoryDataset(InMemoryDataset):
     def __init__(
         self,
         precision: torch.dtype = torch.float,
-        length_unit: str = 'Ang',
-        energy_unit: str = 'eV',
+        data_length_unit: str = 'Ang',
+        data_energy_unit: str = 'eV',
         **kwargs,
     ) -> None:
         self.precision = precision
-        self.units = {'length': getattr(units, length_unit), 'energy': getattr(units, energy_unit)}
+        self.units = {'length': getattr(units, data_length_unit), 'energy': getattr(units, data_energy_unit)}
         super().__init__(**kwargs)
 
         self.load(self.processed_paths[0])
