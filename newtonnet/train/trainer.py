@@ -84,7 +84,7 @@ class Trainer(object):
             self.make_subdirs(output_base_path, script_path, settings_path)
         else:
             self.output_path = None
-            self.graph_path = None
+            # self.graph_path = None
             self.model_path = None
 
         # checkpoints
@@ -115,8 +115,8 @@ class Trainer(object):
         shutil.copyfile(settings_path, os.path.join(script_out, os.path.basename(settings_path)))
 
         # create subdirectory for computation graph
-        self.graph_path = os.path.join(self.output_path, 'graph')
-        os.makedirs(self.graph_path)
+        # self.graph_path = os.path.join(self.output_path, 'graph')
+        # os.makedirs(self.graph_path)
 
         # create subdirectory for models
         self.model_path = os.path.join(self.output_path, 'models')
@@ -217,8 +217,8 @@ class Trainer(object):
                     log_one_epoch['save_model'] = True
 
             # plots
-            if epoch % self.check_log == 0 and self.graph_path is not None:
-                self.plot_grad_flow(epoch)
+            # if epoch % self.check_log == 0 and self.graph_path is not None:
+            #     self.plot_grad_flow(epoch)
             if self.output_path is not None:
                 self.local_log(log_one_epoch)
             if self.log_wandb:
