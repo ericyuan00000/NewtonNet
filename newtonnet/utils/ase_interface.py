@@ -100,14 +100,16 @@ class MLAseCalculator(Calculator):
                 hessian = pred.hessian.cpu().detach().numpy()
                 preds['hessian'][model_] = hessian.reshape(n_frames, n_atoms, 3, n_atoms, 3)
             if 'stress' in self.properties:
-                stress = -pred.stress.cpu().detach().numpy() / atoms.get_volume() / 2
-                preds['stress'][model_] = stress.flatten()[[0, 4, 8, 5, 2, 1]]
+                stress = pred.stress.cpu().detach().numpy()
+                volume = np.array([atoms[frame].get_volume() for frame in range(n_frames)])
+                stress = -stress[:, [0, 1, 2, 1, 0, 0], [0, 1, 2, 2, 2, 1]] / volume[:, None] / 2
+                preds['stress'][model_] = stress
             del pred
 
         # self.results['outlier'] = self.q_test(preds['energy'])
         for key in self.properties:
             # self.results[key] = self.remove_outlier(preds[key], self.results['outlier']).mean(axis=0)
-            self.results[key] = preds[key].mean(axis=0)
+            self.results[key] = preds[key].mean(axis=0).squeeze()
 
             # if self.disagreement == 'std':
             #     self.results[key + '_disagreement'] = preds[key].std(axis=0).max()
