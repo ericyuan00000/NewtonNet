@@ -3,20 +3,20 @@ from torch import nn
 from torch_geometric.utils import scatter
 
 
-def get_scaler_by_string(key):
-    if key == 'energy':
-        scaler = ScaleShift(scale=True, shift=True)
-    elif key == 'gradient_force':
-        scaler = ScaleShift(scale=False, shift=False)
-    elif key == 'direct_force':
-        scaler = ScaleShift(scale=True, shift=False)
-    elif key == 'hessian':
-        scaler = ScaleShift(scale=False, shift=False)
-    elif key == 'stress':
-        scaler = ScaleShift(scale=False, shift=False)
-    else:
-        raise NotImplementedError(f'Scaler type {key} is not implemented yet')
-    return scaler
+def get_scaler_by_string(key, scale=None, shift=None, **kwargs):
+    defaults = {
+        'energy': {'scale': True, 'shift': True},
+        'gradient_force': {'scale': False, 'shift': False},
+        'direct_force': {'scale': True, 'shift': False},
+        'hessian': {'scale': False, 'shift': False},
+        'stress': {'scale': False, 'shift': False},
+    }
+    assert key in defaults.keys(), f'Scaler type {key} is not implemented yet'
+    if scale is None:
+        scale = defaults[key]['scale']
+    if shift is None:
+        shift = defaults[key]['shift']
+    return ScaleShift(scale=scale, shift=shift)
 
 def set_scaler_by_string(key, scaler, stats, fit_scale=True, fit_shift=True):
     if key == 'energy':

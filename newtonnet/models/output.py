@@ -7,7 +7,7 @@ from newtonnet.layers.scalers import ScaleShift
 
 
 
-def get_output_by_string(key, n_features=None, activation=None):
+def get_output_by_string(key, n_features=None, activation=None, **kwargs):
     if key == 'energy':
         output_layer = EnergyOutput(n_features, activation)
     elif key == 'gradient_force':
@@ -22,7 +22,7 @@ def get_output_by_string(key, n_features=None, activation=None):
         raise NotImplementedError(f'Output type {key} is not implemented yet')
     return output_layer
 
-def get_aggregator_by_string(key):
+def get_aggregator_by_string(key, **kwargs):
     if key == 'energy':
         aggregator = SumAggregator()
     elif key == 'gradient_force':
