@@ -16,8 +16,8 @@ def get_output_by_string(key, n_features=None, activation=None):
         output_layer = DirectForceOutput(n_features, activation)
     elif key == 'hessian':
         output_layer = HessianOutput()
-    elif key == 'stress':
-        output_layer = StressOutput()
+    elif key == 'virial':
+        output_layer = VirialOutput()
     else:
         raise NotImplementedError(f'Output type {key} is not implemented yet')
     return output_layer
@@ -150,21 +150,20 @@ class HessianOutput(SecondDerivativeProperty):
         # outputs.hessian = hessian
         return hessian
     
-class StressOutput(DerivativeProperty):
+class VirialOutput(DerivativeProperty):
     '''
-    Stress prediction
+    Virial prediction
     '''
     def __init__(self):
         super().__init__()
 
     def forward(self, outputs):
         pairwise_force = self.get_pairwise_force(outputs)
-        stress = outputs.disp[:, :, None] * pairwise_force[:, None, :]
-        stress = scatter(stress, outputs.edge_index[0], dim=0, reduce='sum', dim_size=outputs.atom_node.size(0)) + \
-            scatter(stress, outputs.edge_index[1], dim=0, reduce='sum', dim_size=outputs.atom_node.size(0))
-        stress = scatter(stress, outputs.batch, dim=0, reduce='sum')
-        # stress = -stress / outputs.volume / 2  # Volume should be included in the stress tensor
-        return stress
+        virial = outputs.disp[:, :, None] * pairwise_force[:, None, :]
+        virial = scatter(virial, outputs.edge_index[0], dim=0, reduce='sum', dim_size=outputs.atom_node.size(0)) + \
+            scatter(virial, outputs.edge_index[1], dim=0, reduce='sum', dim_size=outputs.atom_node.size(0))
+        virial = scatter(virial, outputs.batch, dim=0, reduce='sum')
+        return virial
     
 
 class SumAggregator(nn.Module):
