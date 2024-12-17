@@ -31,7 +31,7 @@ def get_aggregator_by_string(key):
         aggregator = NullAggregator()
     elif key == 'hessian':
         aggregator = NullAggregator()
-    elif key == 'stress':
+    elif key == 'virial':
         aggregator = NullAggregator()
     else:
         raise NotImplementedError(f'Aggregate type {key} is not implemented yet')
