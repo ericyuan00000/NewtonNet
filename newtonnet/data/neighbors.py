@@ -23,12 +23,11 @@ class RadiusGraph(BaseTransform):
         r: float,
         loop: bool = False,
         flow: str = 'source_to_target',
-        max_num_neighbors: int = 1024,
         num_workers: int = 1,
     ) -> None:
         self.r = r
         self.loop = loop
-        self.max_num_neighbors = 32
+        self.max_num_neighbors = 1024
         self.flow = flow
         self.num_workers = num_workers
 
@@ -43,13 +42,13 @@ class RadiusGraph(BaseTransform):
             shift = shift.nan_to_num()
             shifted_pos = data.pos[:, None, :] + shift  # shape: (n_node, n_cell_tot, 3)
             shifted_pos = shifted_pos.reshape(-1, 3)  # shape: (n_node * n_cell_tot, 3)
-            shifted_node_index = torch.arange(data.pos.shape[0], dtype=torch.long, device=data.pos.device)[:, None].repeat(1, 27)  # shape: (n_node, n_cell_tot)
+            shifted_node_index = torch.arange(data.pos.shape[0], dtype=torch.long, device=data.pos.device)[:, None].repeat(1, n_cell_tot)  # shape: (n_node, n_cell_tot)
             shifted_node_index = shifted_node_index.reshape(-1)  # shape: (n_node * n_cell_tot)
-            shifted_node_isoriginal = torch.zeros(data.pos.shape[0], 27, dtype=torch.bool, device=data.pos.device)  # shape: (n_node, n_cell_tot)
+            shifted_node_isoriginal = torch.zeros(data.pos.shape[0], n_cell_tot, dtype=torch.bool, device=data.pos.device)  # shape: (n_node, n_cell_tot)
             shifted_node_isoriginal[:, n_cell_tot // 2] = True
             shifted_node_isoriginal = shifted_node_isoriginal.reshape(-1)  # shape: (n_node * n_cell_tot)
             if data.batch is not None:
-                shifted_batch = data.batch[:, None].repeat(1, 27)  # shape: (n_node, n_cell_tot)
+                shifted_batch = data.batch[:, None].repeat(1, n_cell_tot)  # shape: (n_node, n_cell_tot)
                 shifted_batch = shifted_batch.reshape(-1)  # shape: (n_node * n_cell_tot)
             else:
                 shifted_batch = None
@@ -77,12 +76,6 @@ class RadiusGraph(BaseTransform):
                 num_workers=self.num_workers,
             )#.sort(dim=0)[0].unique(dim=1)
             data.disp = data.pos[data.edge_index[0]] - data.pos[data.edge_index[1]]
-
-        # Keep the maximum number of neighbors sufficiently large
-        num_edges = data.edge_index.size(1)
-        max_num_neighbors = data.edge_index[0].bincount(minlength=data.pos.size(0)).max()
-        if (num_edges * 2 > self.max_num_neighbors * data.pos.size(0)) or (max_num_neighbors * 2 > self.max_num_neighbors):
-            self.max_num_neighbors *= 2
 
         return data
 
