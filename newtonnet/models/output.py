@@ -49,9 +49,9 @@ class DirectProperty(nn.Module):
         super().__init__()
 
 class DerivativeProperty(nn.Module):
-    def __init__(self, create_graph=False):
+    def __init__(self):
         super().__init__()
-        self.create_graph = create_graph
+        self.create_graph = False  # Set by the model with train() or eval()
 
     def get_pairwise_force(self, outputs):
         if not hasattr(outputs, 'pairwise_force'):
@@ -63,6 +63,10 @@ class DerivativeProperty(nn.Module):
                 retain_graph=self.create_graph,
                 )[0]
         return outputs.pairwise_force
+    
+class SecondDerivativeProperty(DerivativeProperty):
+    def __init__(self):
+        super().__init__()
 
 
 class EnergyOutput(DirectProperty):
@@ -93,8 +97,8 @@ class GradientForceOutput(DerivativeProperty):
     '''
     Gradient force prediction
     '''
-    def __init__(self, create_graph=False):
-        super().__init__(create_graph=create_graph)
+    def __init__(self):
+        super().__init__()
 
     def forward(self, outputs):
         pairwise_force = self.get_pairwise_force(outputs)
@@ -123,12 +127,12 @@ class DirectForceOutput(DirectProperty):
         # outputs.direct_force = force
         return force
     
-class HessianOutput(DerivativeProperty):
+class HessianOutput(SecondDerivativeProperty):
     '''
     Hessian prediction
     '''
-    def __init__(self, create_graph=False):
-        super().__init__(create_graph=create_graph)
+    def __init__(self):
+        super().__init__()
 
     def forward(self, outputs):
         hessian = torch.vmap(
@@ -150,8 +154,8 @@ class StressOutput(DerivativeProperty):
     '''
     Stress prediction
     '''
-    def __init__(self, create_graph=False):
-        super().__init__(create_graph=create_graph)
+    def __init__(self):
+        super().__init__()
 
     def forward(self, outputs):
         pairwise_force = self.get_pairwise_force(outputs)

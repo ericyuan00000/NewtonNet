@@ -8,7 +8,7 @@ from torch_geometric.data import Data, Batch
 from newtonnet.layers.precision import get_precision_by_string
 from newtonnet.layers.scalers import get_scaler_by_string
 from newtonnet.models.output import get_output_by_string, get_aggregator_by_string
-from newtonnet.models.output import CustomOutputSet, DerivativeProperty
+from newtonnet.models.output import DerivativeProperty, SecondDerivativeProperty
 from newtonnet.data import RadiusGraph
 
 
@@ -140,13 +140,13 @@ class MLAseCalculator(Calculator):
             model.output_layers.pop(i)
             model.scalers.pop(i)
             model.aggregators.pop(i)
-        model.embedding_layer.requires_dr = False
-        for layer in model.output_layers:
-            if isinstance(layer, DerivativeProperty):
-                model.embedding_layer.requires_dr = True
-                layer.create_graph = False
         model.to(self.dtype)
         model.eval()
+        model.embedding_layer.requires_dr = any(isinstance(layer, DerivativeProperty) for layer in model.output_layers)
+        if any(isinstance(layer, SecondDerivativeProperty) for layer in model.output_layers):
+            for layer in model.output_layers:
+                if isinstance(layer, DerivativeProperty):
+                    layer.create_graph = True
         return model
 
     def format_data(self, atoms_list):
