@@ -84,7 +84,6 @@ class MLAseCalculator(Calculator):
             preds['hessian'] = np.zeros((n_models, n_frames, n_atoms, 3, n_atoms, 3))
         if 'stress' in self.properties:
             preds['stress'] = np.zeros((n_models, n_frames, 6))
-        
         for model_, model in enumerate(self.models):
             pred = model(data.z, data.disp, data.edge_index, data.batch)
             if 'energy' in self.properties:
